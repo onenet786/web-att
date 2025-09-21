@@ -1,0 +1,1428 @@
+// Employee Management System JavaScript with MySQL Integration
+
+// Global variables
+let employees = [];
+let workRecords = {};
+let currentDate = new Date().toISOString().split('T')[0];
+const API_BASE_URL = 'http://192.168.19.251:3000/api';
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', async function() {
+    initializeApp();
+    await loadEmployees();
+    await updateDashboard();
+    await loadWorkRecordsForDate();
+    loadEmployeesList();
+    generateReport();
+});
+
+// API Helper Functions
+async function apiCall(endpoint, options = {}) {
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            ...options
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'API request failed');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('API Error:', error);
+        showMessage(`API Error: ${error.message}`, 'error');
+        throw error;
+    }
+}
+
+// Data Management Functions
+async function loadEmployees() {
+    try {
+        employees = await apiCall('/employees');
+    } catch (error) {
+        console.error('Failed to load employees:', error);
+        employees = [];
+    }
+}
+
+
+// Navigation Functions
+function showTab(tabName) {
+    // Hide all tab contents
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(tab => tab.classList.remove('active'));
+
+    // Remove active class from all nav tabs
+    const navTabs = document.querySelectorAll('.nav-tab');
+    navTabs.forEach(tab => tab.classList.remove('active'));
+
+    // Show selected tab content
+    document.getElementById(tabName).classList.add('active');
+
+    // Add active class to clicked nav tab
+    event.target.classList.add('active');
+
+    // Update content based on tab
+    switch(tabName) {
+        case 'dashboard':
+            updateDashboard();
+            break;
+        case 'work-records':
+            loadWorkRecordsForDate();
+            break;
+        case 'employees':
+            loadEmployeesList();
+            break;
+        case 'reports':
+            generateReport();
+            break;
+    }
+}
+
+// Dashboard Functions
+async function updateDashboard() {
+    try {
+        const dashboardData = await apiCall('/dashboard');
+        
+        // Update dashboard stats
+        document.getElementById('totalEmployees').textContent = dashboardData.totalEmployees;
+        document.getElementById('presentToday').textContent = dashboardData.todayWorkRecords.present || 0;
+        document.getElementById('absentToday').textContent = dashboardData.todayWorkRecords.absent || 0;
+        
+        const totalMarked = (dashboardData.todayWorkRecords.present || 0) + (dashboardData.todayWorkRecords.absent || 0);
+        const attendanceRate = dashboardData.totalEmployees > 0 ? 
+            Math.round(((dashboardData.todayWorkRecords.present || 0) / dashboardData.totalEmployees) * 100) : 0;
+        document.getElementById('attendanceRate').textContent = attendanceRate + '%';
+
+        // Update recent activity
+        updateRecentActivity(dashboardData.recentActivities);
+    } catch (error) {
+        console.error('Failed to update dashboard:', error);
+        // Fallback to local data
+        const totalEmployees = employees.length;
+        const today = new Date().toISOString().split('T')[0];
+        const todayWorkRecords = workRecords[today] || {};
+        
+        let presentCount = 0;
+        let absentCount = 0;
+        
+        employees.forEach(employee => {
+            const employeeWorkRecord = todayWorkRecords[employee.employee_id];
+            if (employeeWorkRecord === 'present') {
+                presentCount++;
+            } else if (employeeWorkRecord === 'absent') {
+                absentCount++;
+            }
+        });
+
+        const attendanceRate = totalEmployees > 0 ? Math.round((presentCount / totalEmployees) * 100) : 0;
+
+        document.getElementById('totalEmployees').textContent = totalEmployees;
+        document.getElementById('presentToday').textContent = presentCount;
+        document.getElementById('absentToday').textContent = absentCount;
+        document.getElementById('attendanceRate').textContent = attendanceRate + '%';
+    }
+}
+
+function updateRecentActivity(recentActivities = []) {
+    const activityList = document.getElementById('recentActivity');
+    const activities = [];
+
+    // Add recent work record activities from API
+    recentActivities.forEach(activity => {
+        activities.push({
+            type: 'work_record',
+            date: activity.date,
+            message: `${activity.count} work records on ${formatDate(activity.date)}`,
+            icon: 'fas fa-calendar-check'
+        });
+    });
+
+    // Get recent employee additions from local data
+    const recentEmployees = employees
+        .sort((a, b) => new Date(b.date_added) - new Date(a.date_added))
+        .slice(0, 3);
+    
+    recentEmployees.forEach(employee => {
+        activities.push({
+            type: 'employee',
+            date: employee.date_added,
+            message: `New employee added: ${employee.name}`,
+            icon: 'fas fa-user-plus'
+        });
+    });
+
+    // Sort activities by date
+    activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Display activities
+    if (activities.length === 0) {
+        activityList.innerHTML = '<div class="empty-state"><i class="fas fa-info-circle"></i><h3>No recent activity</h3><p>Start by adding employees and marking work records.</p></div>';
+    } else {
+        activityList.innerHTML = activities.slice(0, 5).map(activity => `
+            <div class="activity-item">
+                <i class="${activity.icon}"></i>
+                <span>${activity.message}</span>
+            </div>
+        `).join('');
+    }
+}
+
+// Employee Management Functions
+function showAddEmployeeModal() {
+    document.getElementById('addEmployeeModal').style.display = 'block';
+    document.getElementById('addEmployeeForm').reset();
+    loadDepartments();
+    loadPositions();
+    generateEmployeeId();
+}
+
+function closeAddEmployeeModal() {
+    document.getElementById('addEmployeeModal').style.display = 'none';
+}
+
+function showEditEmployeeModal(index) {
+    const employee = employees[index];
+    document.getElementById('editEmployeeIndex').value = index;
+    document.getElementById('editEmployeeName').value = employee.name;
+    document.getElementById('editEmployeeId').value = employee.employee_id;
+    document.getElementById('editEmployeeEmail').value = employee.email;
+    document.getElementById('editEmployeePhone').value = employee.phone || '';
+    document.getElementById('editEmployeeCNIC').value = employee.cnic || '';
+    document.getElementById('editEmployeeSalary').value = employee.salary || '';
+    document.getElementById('editEmployeeJoiningDate').value = employee.hire_date || '';
+    document.getElementById('editEmployeeFatherName').value = employee.father_name || '';
+    document.getElementById('editEmployeeEducation').value = employee.education || '';
+    document.getElementById('editEmployeeDOB').value = employee.date_of_birth || '';
+    document.getElementById('editEmployeeAddress').value = employee.address || '';
+    document.getElementById('editEmployeeReference').value = employee.reference || '';
+    
+    // Set dropdown values
+    document.getElementById('editEmployeeDepartment').value = employee.department;
+    document.getElementById('editEmployeePosition').value = employee.position;
+    
+    // Handle picture display
+    const editPicturePreview = document.getElementById('editPicturePreview');
+    const editPreviewImage = document.getElementById('editPreviewImage');
+    const clearEditPictureBtn = document.getElementById('clearEditPictureBtn');
+    
+    if (employee.picture) {
+        editPreviewImage.src = employee.picture;
+        editPicturePreview.style.display = 'block';
+        clearEditPictureBtn.style.display = 'inline-block';
+        selectedPictureData = employee.picture; // Set current picture as selected
+    } else {
+        editPicturePreview.style.display = 'none';
+        clearEditPictureBtn.style.display = 'none';
+        selectedPictureData = null;
+    }
+    
+    loadDepartments();
+    loadPositions();
+    
+    document.getElementById('editEmployeeModal').style.display = 'block';
+}
+
+function closeEditEmployeeModal() {
+    document.getElementById('editEmployeeModal').style.display = 'none';
+    
+    // Clear picture data when closing edit modal
+    selectedPictureData = null;
+    clearEditPicture();
+}
+
+// Load departments for dropdown
+async function loadDepartments() {
+    try {
+        const departments = await apiCall('/departments');
+        const addSelect = document.getElementById('employeeDepartment');
+        const editSelect = document.getElementById('editEmployeeDepartment');
+        
+        // Clear existing options
+        addSelect.innerHTML = '<option value="">Select Department</option>';
+        editSelect.innerHTML = '<option value="">Select Department</option>';
+        
+        departments.forEach(dept => {
+            const option1 = new Option(dept.name, dept.name);
+            const option2 = new Option(dept.name, dept.name);
+            addSelect.appendChild(option1);
+            editSelect.appendChild(option2);
+        });
+    } catch (error) {
+        console.error('Error loading departments:', error);
+    }
+}
+
+// Load positions for dropdown
+async function loadPositions() {
+    try {
+        const positions = await apiCall('/positions');
+        const addSelect = document.getElementById('employeePosition');
+        const editSelect = document.getElementById('editEmployeePosition');
+        
+        // Clear existing options
+        addSelect.innerHTML = '<option value="">Select Position</option>';
+        editSelect.innerHTML = '<option value="">Select Position</option>';
+        
+        positions.forEach(pos => {
+            const option1 = new Option(pos.title, pos.title);
+            const option2 = new Option(pos.title, pos.title);
+            addSelect.appendChild(option1);
+            editSelect.appendChild(option2);
+        });
+    } catch (error) {
+        console.error('Error loading positions:', error);
+    }
+}
+
+// CNIC formatting and validation functions
+function formatCNIC(input) {
+    let value = input.value.replace(/\D/g, ''); // Remove non-digits
+    
+    if (value.length <= 5) {
+        input.value = value;
+    } else if (value.length <= 12) {
+        input.value = value.slice(0, 5) + '-' + value.slice(5);
+    } else {
+        input.value = value.slice(0, 5) + '-' + value.slice(5, 12) + '-' + value.slice(12, 13);
+    }
+}
+
+function validateCNICField(input) {
+    const cnicPattern = /^\d{5}-\d{7}-\d{1}$/;
+    const errorElement = document.getElementById(input.id + 'Error');
+    
+    if (input.value && !cnicPattern.test(input.value)) {
+        errorElement.style.display = 'block';
+        input.style.borderColor = 'red';
+        return false;
+    } else {
+        errorElement.style.display = 'none';
+        input.style.borderColor = '';
+        return true;
+    }
+}
+
+// Add department and position management functions
+function showAddDepartmentModal() {
+    document.getElementById('addDepartmentModal').style.display = 'block';
+    document.getElementById('addDepartmentForm').reset();
+}
+
+function closeAddDepartmentModal() {
+    document.getElementById('addDepartmentModal').style.display = 'none';
+}
+
+function showAddPositionModal() {
+    document.getElementById('addPositionModal').style.display = 'block';
+    document.getElementById('addPositionForm').reset();
+}
+
+function closeAddPositionModal() {
+    document.getElementById('addPositionModal').style.display = 'none';
+}
+
+async function addDepartment() {
+    const name = document.getElementById('departmentName').value.trim();
+    
+    if (!name) {
+        showMessage('Please enter department name.', 'error');
+        return;
+    }
+
+    try {
+        await apiCall('/departments', {
+            method: 'POST',
+            body: JSON.stringify({ name: name })
+        });
+
+        closeAddDepartmentModal();
+        loadDepartments(); // Refresh the dropdown
+        showMessage('Department added successfully!', 'success');
+    } catch (error) {
+        // Error message is already shown by apiCall function
+    }
+}
+
+async function addPosition() {
+    const title = document.getElementById('positionName').value.trim();
+    
+    if (!title) {
+        showMessage('Please enter position name.', 'error');
+        return;
+    }
+
+    try {
+        await apiCall('/positions', {
+            method: 'POST',
+            body: JSON.stringify({ title: title })
+        });
+
+        closeAddPositionModal();
+        loadPositions(); // Refresh the dropdown
+        showMessage('Position added successfully!', 'success');
+    } catch (error) {
+        // Error message is already shown by apiCall function
+    }
+}
+
+// Generate auto employee ID based on database
+async function generateEmployeeId() {
+    try {
+        const response = await apiCall('/employees/next-id');
+        const nextId = response.nextId;
+        document.getElementById('employeeId').value = nextId;
+    } catch (error) {
+        console.error('Error generating employee ID:', error);
+        // Fallback to current timestamp if API fails
+        const fallbackId = 'EMP' + Date.now().toString().slice(-6);
+        document.getElementById('employeeId').value = fallbackId;
+    }
+}
+
+// Validate CNIC format
+function validateCNIC(cnic) {
+    const cnicPattern = /^\d{5}-\d{7}-\d{1}$/;
+    return cnicPattern.test(cnic);
+}
+
+async function addEmployee() {
+    const name = document.getElementById('employeeName').value.trim();
+    const id = document.getElementById('employeeId').value.trim();
+    const email = document.getElementById('employeeEmail').value.trim();
+    const phone = document.getElementById('employeePhone').value.trim();
+    const cnic = document.getElementById('employeeCNIC').value.trim();
+    const salary = document.getElementById('employeeSalary').value.trim();
+    const joiningDate = document.getElementById('employeeJoiningDate').value;
+    const department = document.getElementById('employeeDepartment').value;
+    const position = document.getElementById('employeePosition').value;
+    const fatherName = document.getElementById('employeeFatherName').value.trim();
+    const education = document.getElementById('employeeEducation').value.trim();
+    const dob = document.getElementById('employeeDOB').value;
+    const address = document.getElementById('employeeAddress').value.trim();
+    const reference = document.getElementById('employeeReference').value.trim();
+
+    // Validation
+    if (!name || !id || !email || !department || !position || !joiningDate || !fatherName || !cnic || !education || !dob || !address) {
+        showMessage('Please fill in all required fields.', 'error');
+        return;
+    }
+
+    // Validate CNIC format if provided
+    if (cnic && !validateCNIC(cnic)) {
+        showMessage('Invalid CNIC format. Please use XXXXX-XXXXXXX-X format.', 'error');
+        return;
+    }
+
+    try {
+        const employeeData = {
+            employee_id: id,
+            name: name,
+            email: email,
+            phone: phone,
+            cnic: cnic,
+            salary: salary ? parseFloat(salary) : null,
+            hire_date: joiningDate,
+            department: department,
+            position: position,
+            father_name: fatherName,
+            education: education,
+            date_of_birth: dob,
+            address: address,
+            reference: reference || null
+        };
+
+        // Add picture data if available
+        if (selectedPictureData) {
+            employeeData.pictureData = selectedPictureData;
+        }
+
+        await apiCall('/employees', {
+            method: 'POST',
+            body: JSON.stringify(employeeData)
+        });
+
+        closeAddEmployeeModal();
+        // Clear the selected picture data after successful submission
+        selectedPictureData = null;
+        clearPicture();
+        await loadEmployees();
+        loadEmployeesList();
+        updateDashboard();
+        showMessage('Employee added successfully!', 'success');
+    } catch (error) {
+        // Error message is already shown by apiCall function
+    }
+}
+
+async function updateEmployee() {
+    const index = document.getElementById('editEmployeeIndex').value;
+    const name = document.getElementById('editEmployeeName').value.trim();
+    const id = document.getElementById('editEmployeeId').value.trim();
+    const email = document.getElementById('editEmployeeEmail').value.trim();
+    const phone = document.getElementById('editEmployeePhone').value.trim();
+    const cnic = document.getElementById('editEmployeeCNIC').value.trim();
+    const salary = document.getElementById('editEmployeeSalary').value.trim();
+    const joiningDate = document.getElementById('editEmployeeJoiningDate').value;
+    const department = document.getElementById('editEmployeeDepartment').value;
+    const position = document.getElementById('editEmployeePosition').value;
+    const fatherName = document.getElementById('editEmployeeFatherName').value.trim();
+    const education = document.getElementById('editEmployeeEducation').value.trim();
+    const dob = document.getElementById('editEmployeeDOB').value;
+    const address = document.getElementById('editEmployeeAddress').value.trim();
+    const reference = document.getElementById('editEmployeeReference').value.trim();
+
+    // Validation
+    if (!name || !id || !email || !department || !position || !joiningDate || !fatherName || !cnic || !education || !dob || !address) {
+        showMessage('Please fill in all required fields.', 'error');
+        return;
+    }
+
+    // Validate CNIC format if provided
+    if (cnic && !validateCNIC(cnic)) {
+        showMessage('Invalid CNIC format. Please use XXXXX-XXXXXXX-X format.', 'error');
+        return;
+    }
+
+    try {
+        const employeeData = {
+            name: name,
+            email: email,
+            phone: phone,
+            cnic: cnic,
+            salary: salary ? parseFloat(salary) : null,
+            hire_date: joiningDate,
+            department: department,
+            position: position,
+            father_name: fatherName,
+            education: education,
+            date_of_birth: dob,
+            address: address,
+            reference: reference || null
+        };
+
+        // Add picture data if available
+        if (selectedPictureData) {
+            employeeData.pictureData = selectedPictureData;
+        }
+
+        await apiCall(`/employees/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(employeeData)
+        });
+
+        closeEditEmployeeModal();
+        // Clear the selected picture data after successful update
+        selectedPictureData = null;
+        clearPicture();
+        await loadEmployees();
+        loadEmployeesList();
+        updateDashboard();
+        showMessage('Employee updated successfully!', 'success');
+    } catch (error) {
+        // Error message is already shown by apiCall function
+    }
+}
+
+async function deleteEmployee(index) {
+    if (confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
+        const employee = employees[index];
+        
+        try {
+            await apiCall(`/employees/${employee.employee_id}`, {
+                method: 'DELETE'
+            });
+
+            await loadEmployees();
+            loadEmployeesList();
+            updateDashboard();
+            showMessage('Employee deleted successfully!', 'success');
+        } catch (error) {
+            // Error message is already shown by apiCall function
+        }
+    }
+}
+
+function loadEmployeesList() {
+    const employeesList = document.getElementById('employeesList');
+    
+    if (employees.length === 0) {
+        employeesList.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><h3>No employees found</h3><p>Add your first employee to get started.</p></div>';
+        return;
+    }
+
+    employeesList.innerHTML = employees.map((employee, index) => `
+        <div class="employee-card">
+            <div class="employee-card-header">
+                <div class="employee-card-avatar">
+                    ${employee.picture ? 
+                        `<img src="${employee.picture}" alt="${employee.name}" class="employee-avatar-img">` : 
+                        `<div class="employee-avatar-initials">${employee.name.split(' ').map(n => n[0]).join('').toUpperCase()}</div>`
+                    }
+                </div>
+                <div class="employee-card-info">
+                    <h4>${employee.name}</h4>
+                    <p>ID: ${employee.employee_id}</p>
+                </div>
+            </div>
+            <div class="employee-card-details">
+                <p><i class="fas fa-envelope"></i> ${employee.email}</p>
+                <p><i class="fas fa-phone"></i> ${employee.phone || 'Not provided'}</p>
+                <p><i class="fas fa-building"></i> ${employee.department}</p>
+            </div>
+            <div class="employee-card-actions">
+                <button class="btn btn-primary btn-sm" onclick="showEditEmployeeModal(${index})">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteEmployee(${index})">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function searchEmployees() {
+    const searchTerm = document.getElementById('employeeSearch').value.toLowerCase();
+    const employeeCards = document.querySelectorAll('.employee-card');
+    
+    employeeCards.forEach(card => {
+        const employeeName = card.querySelector('h4').textContent.toLowerCase();
+        const employeeId = card.querySelector('p').textContent.toLowerCase();
+        const employeeDepartment = card.querySelectorAll('p')[2].textContent.toLowerCase();
+        
+        if (employeeName.includes(searchTerm) || employeeId.includes(searchTerm) || employeeDepartment.includes(searchTerm)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Work Records Functions
+async function loadWorkRecordsForDate(date = null) {
+    const dateInput = document.getElementById('workRecordsDate');
+    if (date) {
+        currentDate = date;
+        dateInput.value = date;
+    } else if (dateInput.value) {
+        currentDate = dateInput.value;
+    } else {
+        dateInput.value = currentDate;
+    }
+
+    const workRecordsList = document.getElementById('workRecordsList');
+    
+    if (employees.length === 0) {
+        workRecordsList.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-day"></i><h3>No employees found</h3><p>Add employees first to mark work records.</p></div>';
+        return;
+    }
+
+    // Load work records data from API
+    try {
+        const workRecordsData = await apiCall(`/work-records/${currentDate}`);
+        workRecords[currentDate] = {};
+        workRecordsData.forEach(item => {
+            workRecords[currentDate][item.employee_id] = item.status || 'absent';
+        });
+    } catch (error) {
+        console.error('Failed to load work records:', error);
+        workRecords[currentDate] = {};
+    }
+    
+    const todayWorkRecords = workRecords[currentDate] || {};
+    
+    workRecordsList.innerHTML = employees.map(employee => {
+        const employeeWorkRecord = todayWorkRecords[employee.employee_id] || 'absent';
+        return `
+            <div class="work-record-item">
+                <div class="employee-info">
+                    <div class="employee-avatar">
+                        ${employee.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    </div>
+                    <div class="employee-details">
+                        <h4>${employee.name}</h4>
+                        <p>${employee.employee_id} • ${employee.department}</p>
+                    </div>
+                </div>
+                <div class="work-record-actions">
+                    <button class="btn btn-success btn-sm ${employeeWorkRecord === 'present' ? 'active' : ''}" 
+                            onclick="markWorkRecord('${employee.employee_id}', 'present')">
+                        <i class="fas fa-check"></i> Present
+                    </button>
+                    <button class="btn btn-warning btn-sm ${employeeWorkRecord === 'sick_leave' ? 'active' : ''}" 
+                            onclick="markWorkRecord('${employee.employee_id}', 'sick_leave')">
+                        <i class="fas fa-thermometer-half"></i> Sick Leave
+                    </button>
+                    <button class="btn btn-info btn-sm ${employeeWorkRecord === 'vacation' ? 'active' : ''}" 
+                            onclick="markWorkRecord('${employee.employee_id}', 'vacation')">
+                        <i class="fas fa-plane"></i> Vacation
+                    </button>
+                    <button class="btn btn-danger btn-sm ${employeeWorkRecord === 'absent' ? 'active' : ''}" 
+                            onclick="markWorkRecord('${employee.employee_id}', 'absent')">
+                        <i class="fas fa-times"></i> Absent
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function markWorkRecord(employeeId, status) {
+    try {
+        await apiCall('/work-records', {
+            method: 'POST',
+            body: JSON.stringify({
+                employee_id: employeeId,
+                date: currentDate,
+                status: status
+            })
+        });
+
+        // Update local data
+        if (!workRecords[currentDate]) {
+            workRecords[currentDate] = {};
+        }
+        workRecords[currentDate][employeeId] = status;
+        
+        loadWorkRecordsForDate();
+        updateDashboard();
+        
+        const employee = employees.find(e => e.employee_id === employeeId);
+        showMessage(`${employee.name} marked as ${status.replace('_', ' ')}!`, 'success');
+    } catch (error) {
+        // Error message is already shown by apiCall function
+    }
+}
+
+async function markAllPresent() {
+    if (employees.length === 0) {
+        showMessage('No employees to mark work records for.', 'error');
+        return;
+    }
+    
+    try {
+        const workRecordsData = employees.map(employee => ({
+            employee_id: employee.employee_id,
+            date: currentDate,
+            status: 'present'
+        }));
+
+        await apiCall('/work-records/bulk', {
+            method: 'POST',
+            body: JSON.stringify({
+                date: currentDate,
+                work_records_data: workRecordsData
+            })
+        });
+
+        // Update local data
+        if (!workRecords[currentDate]) {
+            workRecords[currentDate] = {};
+        }
+        employees.forEach(employee => {
+            workRecords[currentDate][employee.employee_id] = 'present';
+        });
+        
+        loadWorkRecordsForDate();
+        updateDashboard();
+        showMessage('All employees marked as present!', 'success');
+    } catch (error) {
+        // Error message is already shown by apiCall function
+    }
+}
+
+async function markAllAbsent() {
+    if (employees.length === 0) {
+        showMessage('No employees to mark work records for.', 'error');
+        return;
+    }
+    
+    try {
+        const workRecordsData = employees.map(employee => ({
+            employee_id: employee.employee_id,
+            date: currentDate,
+            status: 'absent'
+        }));
+
+        await apiCall('/work-records/bulk', {
+            method: 'POST',
+            body: JSON.stringify({
+                date: currentDate,
+                work_records_data: workRecordsData
+            })
+        });
+
+        // Update local data
+        if (!workRecords[currentDate]) {
+            workRecords[currentDate] = {};
+        }
+        employees.forEach(employee => {
+            workRecords[currentDate][employee.employee_id] = 'absent';
+        });
+        
+        loadWorkRecordsForDate();
+        updateDashboard();
+        showMessage('All employees marked as absent!', 'success');
+    } catch (error) {
+        // Error message is already shown by apiCall function
+    }
+}
+
+// Reports Functions
+async function generateReport() {
+    const employeeSelect = document.getElementById('reportEmployee');
+    const monthInput = document.getElementById('reportMonth');
+    const reportContent = document.getElementById('reportContent');
+    
+    // Populate employee dropdown
+    employeeSelect.innerHTML = '<option value="">Select Employee</option>' +
+        employees.map(employee => `<option value="${employee.employee_id}">${employee.name} (${employee.employee_id})</option>`).join('');
+    
+    // Set default month to current month
+    if (!monthInput.value) {
+        const now = new Date();
+        monthInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    }
+    
+    const selectedEmployee = employeeSelect.value;
+    const selectedMonth = monthInput.value;
+    
+    if (!selectedEmployee || !selectedMonth) {
+        reportContent.innerHTML = '<div class="empty-state"><i class="fas fa-chart-bar"></i><h3>Select an employee and month</h3><p>Choose an employee and month to generate work records report.</p></div>';
+        return;
+    }
+    
+    try {
+        const reportData = await apiCall(`/reports/employee/${selectedEmployee}/${selectedMonth}`);
+        
+        const year = parseInt(selectedMonth.split('-')[0]);
+        const month = parseInt(selectedMonth.split('-')[1]);
+        const daysInMonth = new Date(year, month, 0).getDate();
+        
+        let presentDays = 0;
+        let absentDays = 0;
+        let sickLeaveDays = 0;
+        let vacationDays = 0;
+        let totalDays = reportData.work_records.length;
+        
+        const workRecordsMap = {};
+        reportData.work_records.forEach(record => {
+            workRecordsMap[record.date] = record.status;
+            if (record.status === 'present') {
+                presentDays++;
+            } else if (record.status === 'absent') {
+                absentDays++;
+            } else if (record.status === 'sick_leave') {
+                sickLeaveDays++;
+            } else if (record.status === 'vacation') {
+                vacationDays++;
+            }
+        });
+        
+        const reportCalendar = [];
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month - 1, day);
+            const dateString = date.toISOString().split('T')[0];
+            const status = workRecordsMap[dateString] || 'not-marked';
+            
+            reportCalendar.push({
+                date: dateString,
+                day: day,
+                status: status,
+                dayName: date.toLocaleDateString('en-US', { weekday: 'short' })
+            });
+        }
+        
+        const attendanceRate = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+        
+        reportContent.innerHTML = `
+            <div class="report-header">
+                <h3>Work Records Report for ${reportData.employee.name}</h3>
+                <p>Month: ${new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+            </div>
+            
+            <div class="report-stats">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${presentDays}</h3>
+                        <p>Present Days</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon absent">
+                        <i class="fas fa-calendar-times"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${absentDays}</h3>
+                        <p>Absent Days</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-thermometer-half"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${sickLeaveDays}</h3>
+                        <p>Sick Leave</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-plane"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${vacationDays}</h3>
+                        <p>Vacation Days</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${attendanceRate}%</h3>
+                        <p>Attendance Rate</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="report-calendar">
+                <h4>Daily Work Records</h4>
+                <div class="calendar-grid">
+                    ${reportCalendar.map(day => `
+                        <div class="calendar-day ${day.status}">
+                            <div class="day-number">${day.day}</div>
+                            <div class="day-status">
+                                ${day.status === 'present' ? '<i class="fas fa-check"></i>' : 
+                                  day.status === 'absent' ? '<i class="fas fa-times"></i>' : 
+                                  day.status === 'sick_leave' ? '<i class="fas fa-thermometer-half"></i>' :
+                                  day.status === 'vacation' ? '<i class="fas fa-plane"></i>' :
+                                  '<i class="fas fa-minus"></i>'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        reportContent.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Error loading report</h3><p>Failed to load work records report. Please try again.</p></div>';
+    }
+}
+
+async function exportReport() {
+    const employeeSelect = document.getElementById('reportEmployee');
+    const monthInput = document.getElementById('reportMonth');
+    
+    if (!employeeSelect.value || !monthInput.value) {
+        showMessage('Please select an employee and month to export report.', 'error');
+        return;
+    }
+    
+    try {
+        const reportData = await apiCall(`/reports/employee/${employeeSelect.value}/${monthInput.value}`);
+        
+        const selectedMonth = monthInput.value;
+        const year = parseInt(selectedMonth.split('-')[0]);
+        const month = parseInt(selectedMonth.split('-')[1]);
+        const daysInMonth = new Date(year, month, 0).getDate();
+        
+        // Generate CSV content
+        let csvContent = `Work Records Report for ${reportData.employee.name}\n`;
+        csvContent += `Month: ${new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}\n\n`;
+        csvContent += `Date,Day,Status\n`;
+        
+        const workRecordsMap = {};
+        reportData.work_records.forEach(record => {
+            workRecordsMap[record.date] = record.status;
+        });
+        
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month - 1, day);
+            const dateString = date.toISOString().split('T')[0];
+            const status = workRecordsMap[dateString] || 'Not Marked';
+            
+            csvContent += `${dateString},${day},${status}\n`;
+        }
+        
+        // Download CSV file
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `work_records_report_${reportData.employee.name}_${selectedMonth}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showMessage('Report exported successfully!', 'success');
+    } catch (error) {
+        showMessage('Failed to export report. Please try again.', 'error');
+    }
+}
+
+// Utility Functions
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
+}
+
+function showMessage(message, type) {
+    // Remove existing messages
+    const existingMessages = document.querySelectorAll('.message');
+    existingMessages.forEach(msg => msg.remove());
+    
+    // Create new message
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message message-${type}`;
+    messageDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    // Insert message at the top of main content
+    const mainContent = document.querySelector('.main-content');
+    mainContent.insertBefore(messageDiv, mainContent.firstChild);
+    
+    // Auto remove message after 5 seconds
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.remove();
+        }
+    }, 5000);
+}
+
+// Camera functionality variables
+let currentStream = null;
+let selectedPictureData = null;
+
+// Handle file upload
+function handleFileUpload(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            showPicturePreview(e.target.result);
+            selectedPictureData = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Show picture preview
+function showPicturePreview(imageSrc) {
+    const preview = document.getElementById('picturePreview');
+    const previewImage = document.getElementById('previewImage');
+    const clearBtn = document.getElementById('clearPictureBtn');
+    
+    previewImage.src = imageSrc;
+    preview.style.display = 'block';
+    clearBtn.style.display = 'inline-block';
+}
+
+// Clear picture
+function clearPicture() {
+    const preview = document.getElementById('picturePreview');
+    const clearBtn = document.getElementById('clearPictureBtn');
+    const fileInput = document.getElementById('employeePictureFile');
+    
+    preview.style.display = 'none';
+    clearBtn.style.display = 'none';
+    fileInput.value = '';
+    selectedPictureData = null;
+    
+    // Close camera if open
+    closeCamera();
+}
+
+// Handle file upload for Edit Employee modal
+function handleEditFileUpload(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            showEditPicturePreview(e.target.result);
+            selectedPictureData = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Show picture preview for Edit Employee modal
+function showEditPicturePreview(imageSrc) {
+    const preview = document.getElementById('editPicturePreview');
+    const previewImage = document.getElementById('editPreviewImage');
+    const clearBtn = document.getElementById('clearEditPictureBtn');
+    
+    previewImage.src = imageSrc;
+    preview.style.display = 'block';
+    clearBtn.style.display = 'inline-block';
+}
+
+// Clear picture for Edit Employee modal
+function clearEditPicture() {
+    const preview = document.getElementById('editPicturePreview');
+    const clearBtn = document.getElementById('clearEditPictureBtn');
+    const fileInput = document.getElementById('editEmployeePictureFile');
+    
+    preview.style.display = 'none';
+    clearBtn.style.display = 'none';
+    fileInput.value = '';
+    selectedPictureData = null;
+    
+    // Close camera if open
+    closeCamera();
+}
+
+// Open camera for Edit Employee modal
+async function openEditCamera() {
+    try {
+        console.log('🎥 Attempting to access camera for edit modal...');
+        
+        // Check if getUserMedia is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('getUserMedia not supported in this browser');
+        }
+        
+        const video = document.getElementById('cameraVideo');
+        const cameraControls = document.getElementById('cameraControls');
+        const cameraBtn = document.getElementById('editCameraBtn');
+        
+        // Check if video element exists
+        if (!video) {
+            console.error('❌ Video element not found in DOM');
+            showMessage('Camera interface not found. Please refresh the page.', 'error');
+            return;
+        }
+        
+        console.log('📋 Requesting camera permissions...');
+        currentStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: 'user'
+            } 
+        });
+        
+        console.log('✅ Camera access granted, setting up video stream...');
+        video.srcObject = currentStream;
+        video.style.display = 'block';
+        cameraControls.style.display = 'block';
+        cameraBtn.style.display = 'none';
+        
+        // Set flag to indicate we're in edit mode
+        video.dataset.editMode = 'true';
+        
+        showMessage('📷 Camera ready! Click "Capture Photo" to take a picture.', 'success');
+        
+    } catch (error) {
+        console.error('❌ Camera access failed:', error);
+        let errorMessage = 'Camera access failed. ';
+        
+        if (error.name === 'NotAllowedError') {
+            errorMessage += 'Please allow camera permissions and try again.';
+        } else if (error.name === 'NotFoundError') {
+            errorMessage += 'No camera found on this device.';
+        } else if (error.name === 'NotSupportedError') {
+            errorMessage += 'Camera not supported in this browser.';
+        } else {
+            errorMessage += error.message;
+        }
+        
+        showMessage(errorMessage, 'error');
+    }
+}
+
+async function openCamera() {
+    try {
+        console.log('🎥 Attempting to access camera...');
+        
+        // Check if getUserMedia is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('getUserMedia not supported in this browser');
+        }
+        
+        const video = document.getElementById('cameraVideo');
+        const cameraControls = document.getElementById('cameraControls');
+        const cameraBtn = document.getElementById('cameraBtn');
+        
+        // Check if video element exists
+        if (!video) {
+            console.error('❌ Video element not found in DOM');
+            showMessage('Camera interface not found. Please refresh the page.', 'error');
+            return;
+        }
+        
+        console.log('📋 Requesting camera permissions...');
+        currentStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: 'user'
+            } 
+        });
+        
+        console.log('✅ Camera access granted, setting up video stream...');
+        video.srcObject = currentStream;
+        video.style.display = 'block';
+        cameraControls.style.display = 'block';
+        cameraBtn.style.display = 'none';
+        
+        // Show camera modal if it exists
+        const modal = document.getElementById('cameraModal');
+        if (modal) {
+            modal.style.display = 'block';
+        }
+        
+        await video.play();
+        console.log('🎬 Camera is now active and streaming');
+        showMessage('Camera is ready! Position yourself and click "Capture Photo".', 'success');
+        
+    } catch (error) {
+        console.error('❌ Camera Error Details:', {
+            name: error.name,
+            message: error.message,
+            constraint: error.constraint,
+            stack: error.stack
+        });
+        
+        let errorMessage = '';
+        let troubleshooting = '';
+        
+        switch (error.name) {
+            case 'NotAllowedError':
+                errorMessage = 'Camera permission denied by user or browser policy.';
+                troubleshooting = 'Try: 1) Click camera icon in address bar → Allow, 2) Check browser settings, 3) Restart browser';
+                break;
+            case 'NotFoundError':
+                errorMessage = 'No camera device found on this system.';
+                troubleshooting = 'Check if camera is connected and not being used by another app';
+                break;
+            case 'NotReadableError':
+                errorMessage = 'Camera is already in use by another application.';
+                troubleshooting = 'Close other apps using camera (Zoom, Teams, Skype, etc.) and try again';
+                break;
+            case 'OverconstrainedError':
+                errorMessage = 'Camera constraints cannot be satisfied.';
+                troubleshooting = 'Your camera may not support the requested resolution';
+                break;
+            case 'SecurityError':
+                errorMessage = 'Camera access blocked due to security policy.';
+                troubleshooting = 'Try using HTTPS or check browser security settings';
+                break;
+            default:
+                errorMessage = `Camera error: ${error.message}`;
+                troubleshooting = 'Try refreshing the page or using file upload instead';
+        }
+        
+        showMessage(`${errorMessage}\n\n💡 ${troubleshooting}`, 'error');
+    }
+}
+
+
+function closeCamera() {
+    const video = document.getElementById('cameraVideo');
+    const modal = document.getElementById('cameraModal');
+    
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+    }
+    
+    if (video) {
+        video.style.display = 'none';
+    }
+    
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function capturePhoto() {
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    const context = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const imageData = canvas.toDataURL('image/png');
+    
+    // Check if we're in edit mode
+    if (video.dataset.editMode === 'true') {
+        showEditPicturePreview(imageData);
+    } else {
+        showPicturePreview(imageData);
+    }
+    
+    selectedPictureData = imageData;
+    
+    closeCamera();
+}
+
+// Function to help users revoke camera permissions
+function revokeCameraPermissions() {
+    showMessage('To revoke camera permissions:\n1. Click the camera/lock icon in your browser address bar\n2. Set camera permission to "Block" or "Ask"\n3. Refresh the page\n\nAlternatively, go to browser settings > Privacy & Security > Site Settings > Camera', 'info');
+}
+
+// Diagnostic function to test camera availability
+async function testCameraAccess() {
+    console.log('🔍 Running camera diagnostic...');
+    
+    try {
+        // Check basic browser support
+        if (!navigator.mediaDevices) {
+            console.log('❌ navigator.mediaDevices not supported');
+            showMessage('Your browser does not support camera access.', 'error');
+            return;
+        }
+        
+        // Get available devices
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        
+        console.log('📹 Available video devices:', videoDevices.length);
+        videoDevices.forEach((device, index) => {
+            console.log(`Device ${index + 1}: ${device.label || 'Unknown Camera'} (${device.deviceId})`);
+        });
+        
+        if (videoDevices.length === 0) {
+            showMessage('No camera devices found on this system.', 'error');
+            return;
+        }
+        
+        // Test basic camera access
+        console.log('🧪 Testing basic camera access...');
+        const testStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        
+        console.log('✅ Camera test successful!');
+        showMessage(`Camera test passed! Found ${videoDevices.length} camera(s). You can now use the camera feature.`, 'success');
+        
+        // Clean up test stream
+        testStream.getTracks().forEach(track => track.stop());
+        
+    } catch (error) {
+        console.error('🔍 Diagnostic Error:', error);
+        showMessage(`Camera diagnostic failed: ${error.name} - ${error.message}`, 'error');
+    }
+}
+
+function initializeApp() {
+    // Set default date to today
+    document.getElementById('workRecordsDate').value = currentDate;
+    
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+        const addModal = document.getElementById('addEmployeeModal');
+        const editModal = document.getElementById('editEmployeeModal');
+        
+        if (event.target === addModal) {
+            closeAddEmployeeModal();
+        }
+        if (event.target === editModal) {
+            closeEditEmployeeModal();
+        }
+    }
+    
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(event) {
+        // Ctrl/Cmd + N to add new employee
+        if ((event.ctrlKey || event.metaKey) && event.key === 'n') {
+            event.preventDefault();
+            showAddEmployeeModal();
+        }
+        
+        // Escape to close modals
+        if (event.key === 'Escape') {
+            closeAddEmployeeModal();
+            closeEditEmployeeModal();
+        }
+    });
+}
+
+// Add CSS for report calendar
+const additionalCSS = `
+.report-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.report-calendar {
+    margin-top: 30px;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.calendar-day {
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.calendar-day.present {
+    background: #c6f6d5;
+    border-color: #9ae6b4;
+    color: #22543d;
+}
+
+.calendar-day.absent {
+    background: #fed7d7;
+    border-color: #feb2b2;
+    color: #742a2a;
+}
+
+.calendar-day.sick-leave {
+    background: #fef5e7;
+    border-color: #f6e05e;
+    color: #744210;
+}
+
+.calendar-day.personal-leave {
+    background: #e6fffa;
+    border-color: #81e6d9;
+    color: #234e52;
+}
+
+.day-number {
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+}
+
+.day-status {
+    font-size: 1.2rem;
+}
+
+.btn.active {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+`;
+
+// Inject additional CSS
+const style = document.createElement('style');
+style.textContent = additionalCSS;
+document.head.appendChild(style);
