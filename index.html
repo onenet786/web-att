@@ -6,6 +6,7 @@
     <title>Employee Management System</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -138,9 +139,15 @@
                             <option value="">Select Employee</option>
                         </select>
                         <input type="month" id="reportMonth" onchange="generateReport()">
-                        <button class="btn btn-primary" onclick="exportReport()">
-                            <i class="fas fa-download"></i> Export Report
-                        </button>
+                        <div class="export-controls">
+                            <select id="exportFormat">
+                                <option value="csv">CSV</option>
+                                <option value="pdf">PDF</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="exportReport()">
+                                <i class="fas fa-download"></i> Export Report
+                            </button>
+                        </div>
                     </div>
                 </div>
                 

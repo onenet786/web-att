@@ -4,7 +4,7 @@
 let employees = [];
 let workRecords = {};
 let currentDate = new Date().toISOString().split('T')[0];
-const API_BASE_URL = 'http://192.168.19.251:3000/api';
+const API_BASE_URL = 'http://localhost:3000/api';
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async function() {
@@ -79,7 +79,23 @@ function showTab(tabName) {
             loadEmployeesList();
             break;
         case 'reports':
-            generateReport();
+            // Just populate the dropdown, don't generate report yet
+            const employeeSelect = document.getElementById('reportEmployee');
+            if (employeeSelect && employeeSelect.children.length <= 1) {
+                employeeSelect.innerHTML = '<option value="">Select Employee</option>' +
+                    employees.map(employee => `<option value="${employee.employee_id}">${employee.name} (${employee.employee_id})</option>`).join('');
+            }
+            // Set default month
+            const monthInput = document.getElementById('reportMonth');
+            if (monthInput && !monthInput.value) {
+                const now = new Date();
+                monthInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+            }
+            // Show initial message
+            const reportContent = document.getElementById('reportContent');
+            if (reportContent) {
+                reportContent.innerHTML = '<div class="empty-state"><i class="fas fa-chart-bar"></i><h3>Select an employee and month</h3><p>Choose an employee and month to generate work records report.</p></div>';
+            }
             break;
     }
 }
@@ -780,9 +796,11 @@ async function generateReport() {
     const monthInput = document.getElementById('reportMonth');
     const reportContent = document.getElementById('reportContent');
     
-    // Populate employee dropdown
-    employeeSelect.innerHTML = '<option value="">Select Employee</option>' +
-        employees.map(employee => `<option value="${employee.employee_id}">${employee.name} (${employee.employee_id})</option>`).join('');
+    // Populate employee dropdown if not already populated
+    if (employeeSelect.children.length <= 1) {
+        employeeSelect.innerHTML = '<option value="">Select Employee</option>' +
+            employees.map(employee => `<option value="${employee.employee_id}">${employee.name} (${employee.employee_id})</option>`).join('');
+    }
     
     // Set default month to current month
     if (!monthInput.value) {
@@ -921,11 +939,14 @@ async function generateReport() {
 async function exportReport() {
     const employeeSelect = document.getElementById('reportEmployee');
     const monthInput = document.getElementById('reportMonth');
+    const formatSelect = document.getElementById('exportFormat');
     
     if (!employeeSelect.value || !monthInput.value) {
         showMessage('Please select an employee and month to export report.', 'error');
         return;
     }
+    
+    const format = formatSelect.value;
     
     try {
         const reportData = await apiCall(`/reports/employee/${employeeSelect.value}/${monthInput.value}`);
@@ -935,39 +956,116 @@ async function exportReport() {
         const month = parseInt(selectedMonth.split('-')[1]);
         const daysInMonth = new Date(year, month, 0).getDate();
         
-        // Generate CSV content
-        let csvContent = `Work Records Report for ${reportData.employee.name}\n`;
-        csvContent += `Month: ${new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}\n\n`;
-        csvContent += `Date,Day,Status\n`;
-        
         const workRecordsMap = {};
         reportData.work_records.forEach(record => {
             workRecordsMap[record.date] = record.status;
         });
         
+        const reportRows = [];
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(year, month - 1, day);
             const dateString = date.toISOString().split('T')[0];
             const status = workRecordsMap[dateString] || 'Not Marked';
-            
-            csvContent += `${dateString},${day},${status}\n`;
+            reportRows.push({ date: dateString, day, status });
         }
         
-        // Download CSV file
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `work_records_report_${reportData.employee.name}_${selectedMonth}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        if (format === 'csv') {
+            exportToCSV(reportData, reportRows, selectedMonth);
+        } else if (format === 'pdf') {
+            exportToPDF(reportData, reportRows, selectedMonth);
+        }
         
-        showMessage('Report exported successfully!', 'success');
+        showMessage(`Report exported successfully as ${format.toUpperCase()}!`, 'success');
     } catch (error) {
         showMessage('Failed to export report. Please try again.', 'error');
     }
+}
+
+function exportToCSV(reportData, reportRows, selectedMonth) {
+    const year = parseInt(selectedMonth.split('-')[0]);
+    const month = parseInt(selectedMonth.split('-')[1]);
+    
+    let csvContent = `Work Records Report for ${reportData.employee.name}\n`;
+    csvContent += `Month: ${new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}\n\n`;
+    csvContent += `Date,Day,Status\n`;
+    
+    reportRows.forEach(row => {
+        csvContent += `${row.date},${row.day},${row.status}\n`;
+    });
+    
+    // Download CSV file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `work_records_report_${reportData.employee.name}_${selectedMonth}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+function exportToPDF(reportData, reportRows, selectedMonth) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    const year = parseInt(selectedMonth.split('-')[0]);
+    const month = parseInt(selectedMonth.split('-')[1]);
+    const monthName = new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    
+    // Title
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text('Work Records Report', 20, 20);
+    
+    // Employee info
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Employee: ${reportData.employee.name}`, 20, 35);
+    doc.text(`Month: ${monthName}`, 20, 45);
+    
+    // Calculate statistics
+    const presentDays = reportRows.filter(row => row.status === 'Present').length;
+    const absentDays = reportRows.filter(row => row.status === 'Absent').length;
+    const sickLeaveDays = reportRows.filter(row => row.status === 'Sick Leave').length;
+    const personalLeaveDays = reportRows.filter(row => row.status === 'Personal Leave').length;
+    const notMarkedDays = reportRows.filter(row => row.status === 'Not Marked').length;
+    
+    // Statistics
+    doc.text('Summary:', 20, 60);
+    doc.text(`Present: ${presentDays} days`, 30, 70);
+    doc.text(`Absent: ${absentDays} days`, 30, 80);
+    doc.text(`Sick Leave: ${sickLeaveDays} days`, 30, 90);
+    doc.text(`Personal Leave: ${personalLeaveDays} days`, 30, 100);
+    doc.text(`Not Marked: ${notMarkedDays} days`, 30, 110);
+    
+    // Table header
+    doc.setFont(undefined, 'bold');
+    doc.text('Date', 20, 130);
+    doc.text('Day', 60, 130);
+    doc.text('Status', 100, 130);
+    
+    // Draw line under header
+    doc.line(20, 132, 180, 132);
+    
+    // Table content
+    doc.setFont(undefined, 'normal');
+    let yPosition = 145;
+    
+    reportRows.forEach((row, index) => {
+        if (yPosition > 270) { // Start new page if needed
+            doc.addPage();
+            yPosition = 20;
+        }
+        
+        doc.text(row.date, 20, yPosition);
+        doc.text(row.day.toString(), 60, yPosition);
+        doc.text(row.status, 100, yPosition);
+        yPosition += 10;
+    });
+    
+    // Save PDF
+    doc.save(`work_records_report_${reportData.employee.name}_${selectedMonth}.pdf`);
 }
 
 // Utility Functions

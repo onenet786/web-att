@@ -854,3 +854,26 @@ body {
     color: #2a4365;
     border: 1px solid #90cdf4;
 }
+
+/* Add any additional styles here */
+
+.export-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.export-controls select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: white;
+    font-size: 14px;
+    min-width: 80px;
+}
+
+.export-controls select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
