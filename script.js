@@ -1124,7 +1124,15 @@ async function openEditCamera() {
         // Set flag to indicate we're in edit mode
         video.dataset.editMode = 'true';
         
-        showMessage('📷 Camera ready! Click "Capture Photo" to take a picture.', 'success');
+        // Show camera modal if it exists
+        const modal = document.getElementById('cameraModal');
+        if (modal) {
+            modal.style.display = 'block';
+        }
+        
+        await video.play();
+        console.log('🎬 Camera is now active and streaming');
+        showMessage('Camera is ready! Position yourself and click "Capture Photo".', 'success');
         
     } catch (error) {
         console.error('❌ Camera access failed:', error);
@@ -1260,6 +1268,7 @@ function capturePhoto() {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     const imageData = canvas.toDataURL('image/png');
+    selectedPictureData = imageData;
     
     // Check if we're in edit mode
     if (video.dataset.editMode === 'true') {
@@ -1268,9 +1277,8 @@ function capturePhoto() {
         showPicturePreview(imageData);
     }
     
-    selectedPictureData = imageData;
-    
     closeCamera();
+    showMessage('Photo captured successfully!', 'success');
 }
 
 // Function to help users revoke camera permissions
