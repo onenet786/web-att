@@ -790,6 +790,44 @@ async function markAllAbsent() {
     }
 }
 
+// Save work records function
+async function saveWorkRecords() {
+    if (employees.length === 0) {
+        showMessage('No employees to save work records for.', 'error');
+        return;
+    }
+    
+    const todayWorkRecords = workRecords[currentDate] || {};
+    const hasRecords = Object.keys(todayWorkRecords).length > 0;
+    
+    if (!hasRecords) {
+        showMessage('No work records to save. Please mark attendance first.', 'warning');
+        return;
+    }
+    
+    try {
+        const workRecordsData = employees.map(employee => ({
+            employee_id: employee.employee_id,
+            date: currentDate,
+            status: todayWorkRecords[employee.employee_id] || 'absent'
+        }));
+
+        await apiCall('/work-records/bulk', {
+            method: 'POST',
+            body: JSON.stringify({
+                date: currentDate,
+                work_records_data: workRecordsData
+            })
+        });
+        
+        loadWorkRecordsForDate();
+        updateDashboard();
+        showMessage('Work records saved successfully!', 'success');
+    } catch (error) {
+        // Error message is already shown by apiCall function
+    }
+}
+
 // Reports Functions
 async function generateReport() {
     const employeeSelect = document.getElementById('reportEmployee');
@@ -831,7 +869,10 @@ async function generateReport() {
         
         const workRecordsMap = {};
         reportData.work_records.forEach(record => {
-            workRecordsMap[record.date] = record.status;
+            // Convert API date format (2025-09-20T19:00:00.000Z) to frontend format (2025-09-21)
+            const apiDate = new Date(record.date);
+            const frontendDate = apiDate.toISOString().split('T')[0];
+            workRecordsMap[frontendDate] = record.status;
             if (record.status === 'present') {
                 presentDays++;
             } else if (record.status === 'absent') {
@@ -958,7 +999,9 @@ async function exportReport() {
         
         const workRecordsMap = {};
         reportData.work_records.forEach(record => {
-            workRecordsMap[record.date] = record.status;
+            // Convert ISO date to YYYY-MM-DD format for matching
+            const dateKey = record.date.split('T')[0];
+            workRecordsMap[dateKey] = record.status;
         });
         
         const reportRows = [];
@@ -1025,10 +1068,10 @@ function exportToPDF(reportData, reportRows, selectedMonth) {
     doc.text(`Month: ${monthName}`, 20, 45);
     
     // Calculate statistics
-    const presentDays = reportRows.filter(row => row.status === 'Present').length;
-    const absentDays = reportRows.filter(row => row.status === 'Absent').length;
-    const sickLeaveDays = reportRows.filter(row => row.status === 'Sick Leave').length;
-    const personalLeaveDays = reportRows.filter(row => row.status === 'Personal Leave').length;
+    const presentDays = reportRows.filter(row => row.status === 'present').length;
+    const absentDays = reportRows.filter(row => row.status === 'absent').length;
+    const sickLeaveDays = reportRows.filter(row => row.status === 'sick_leave').length;
+    const personalLeaveDays = reportRows.filter(row => row.status === 'personal_leave').length;
     const notMarkedDays = reportRows.filter(row => row.status === 'Not Marked').length;
     
     // Statistics
