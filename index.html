@@ -15,25 +15,26 @@
             <div class="header-content">
                 <h1><i class="fas fa-briefcase"></i> Employee Management System</h1>
                 <div class="header-actions">
-                    <button class="btn btn-primary" onclick="showAddEmployeeModal()">
+                    <button class="btn btn-primary" onclick="showAddEmployeeModal()" data-role="admin,manager">
                         <i class="fas fa-plus"></i> Add Employee
                     </button>
+                    <div id="user-info" class="user-info"></div>
                 </div>
             </div>
         </header>
 
         <!-- Navigation -->
         <nav class="nav-tabs">
-            <button class="nav-tab active" onclick="showTab('dashboard')">
+            <button class="nav-tab active" onclick="showTab('dashboard')" data-role="admin,manager">
                 <i class="fas fa-tachometer-alt"></i> Dashboard
             </button>
-            <button class="nav-tab" onclick="showTab('work-records')">
+            <button class="nav-tab" onclick="showTab('work-records')" data-role="admin,manager,user">
                 <i class="fas fa-calendar-day"></i> Work Records
             </button>
-            <button class="nav-tab" onclick="showTab('employees')">
+            <button class="nav-tab" onclick="showTab('employees')" data-role="admin,manager">
                 <i class="fas fa-users"></i> Employees
             </button>
-            <button class="nav-tab" onclick="showTab('reports')">
+            <button class="nav-tab" onclick="showTab('reports')" data-role="admin,manager">
                 <i class="fas fa-chart-bar"></i> Reports
             </button>
         </nav>

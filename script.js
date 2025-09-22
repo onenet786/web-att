@@ -1,5 +1,70 @@
 // Employee Management System JavaScript with MySQL Integration
 
+// Check authentication status
+document.addEventListener('DOMContentLoaded', function() {
+    checkAuth();
+});
+
+function checkAuth() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+    
+    if (!user || !token) {
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    // Set up user info in UI
+    setupUserInfo(user);
+    
+    // Apply role-based access control
+    applyRoleBasedAccess(user.role);
+}
+
+function setupUserInfo(user) {
+    // Add user info to the header if the element exists
+    const userInfoElement = document.getElementById('user-info');
+    if (userInfoElement) {
+        userInfoElement.innerHTML = `
+            <div class="user-avatar">${user.username.charAt(0).toUpperCase()}</div>
+            <div>
+                <span>${user.username}</span>
+                <button class="btn logout-btn" onclick="logout()">Logout</button>
+            </div>
+        `;
+    }
+}
+
+function applyRoleBasedAccess(role) {
+    if (role === 'user') {
+        // Redirect regular users to attendance page
+        if (window.location.pathname.includes('index.html')) {
+            window.location.href = 'attendance.html';
+        }
+    }
+    
+    // Hide elements based on role
+    document.querySelectorAll('[data-role]').forEach(element => {
+        const allowedRoles = element.dataset.role.split(',');
+        if (!allowedRoles.includes(role) && !allowedRoles.includes('all')) {
+            element.style.display = 'none';
+        }
+    });
+}
+
+function logout() {
+    fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    }).finally(() => {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        window.location.href = 'login.html';
+    });
+}
+
 // Global variables
 let employees = [];
 let workRecords = {}

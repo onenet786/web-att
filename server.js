@@ -5,7 +5,14 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
 require('dotenv').config({ path: './config.env' });
+
+// Secret key for JWT
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-should-be-in-env-file';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +21,13 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+app.use(session({
+    secret: JWT_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 } // 24 hours
+}));
 app.use(express.static('.'));
 
 // Create uploads directory if it doesn't exist
@@ -49,6 +63,38 @@ const upload = multer({
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
+
+// Authentication middleware
+const authenticateUser = (req, res, next) => {
+    const token = req.session.token || req.headers['authorization']?.split(' ')[1];
+    
+    if (!token) {
+        return res.status(401).json({ error: 'Access denied. No token provided.' });
+    }
+    
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        res.status(401).json({ error: 'Invalid token.' });
+    }
+};
+
+// Role-based access control middleware
+const authorizeRole = (roles) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        
+        if (roles.includes(req.user.role)) {
+            next();
+        } else {
+            res.status(403).json({ error: 'Access denied. Insufficient permissions.' });
+        }
+    };
+};
 
 // Database connection
 const dbConfig = {
@@ -87,6 +133,25 @@ async function initDatabase() {
 // Create database tables
 async function createTables() {
     try {
+        // Create users table with roles
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                role ENUM('admin', 'manager', 'user') DEFAULT 'user',
+                employee_id VARCHAR(50),
+                last_login TIMESTAMP NULL,
+                status ENUM('active', 'inactive') DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_username (username),
+                INDEX idx_email (email),
+                INDEX idx_role (role)
+            )
+        `);
+        
         // Create departments table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS departments (
@@ -170,6 +235,28 @@ async function createTables() {
 // Insert sample data
 async function insertSampleData() {
     try {
+        // Insert default users if table is empty
+        const [users] = await pool.query('SELECT COUNT(*) as count FROM users');
+        if (users[0].count === 0) {
+            // Hash passwords for security
+            const saltRounds = 10;
+            const adminPassword = await bcrypt.hash('admin123', saltRounds);
+            const userPassword = await bcrypt.hash('user123', saltRounds);
+            
+            const defaultUsers = [
+                ['admin', adminPassword, 'admin@example.com', 'admin', null],
+                ['attendance', userPassword, 'attendance@example.com', 'user', null]
+            ];
+
+            for (const user of defaultUsers) {
+                await pool.query(
+                    'INSERT INTO users (username, password, email, role, employee_id) VALUES (?, ?, ?, ?, ?)',
+                    user
+                );
+            }
+            console.log('✅ Default users created successfully');
+        }
+        
         // Insert sample departments
         const [departments] = await pool.query('SELECT COUNT(*) as count FROM departments');
         if (departments[0].count === 0) {
@@ -856,7 +943,243 @@ app.get('/api/dashboard', async (req, res) => {
 
 // Serve the main page
 app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+// Serve the index page (protected)
+app.get('/index.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Serve the attendance page (protected)
+app.get('/attendance.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'attendance.html'));
+});
+
+// Authentication API endpoints
+
+// Login endpoint
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+        
+        // Find user in database
+        const [users] = await pool.execute('SELECT * FROM users WHERE username = ? AND status = "active"', [username]);
+        
+        if (users.length === 0) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+        
+        const user = users[0];
+        
+        // Compare password
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+        
+        // Create token
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+        
+        // Update last login
+        await pool.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
+        
+        // Set session
+        req.session.token = token;
+        req.session.user = {
+            id: user.id,
+            username: user.username,
+            role: user.role
+        };
+        
+        res.json({
+            message: 'Login successful',
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                role: user.role
+            },
+            token
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
+
+// Logout endpoint
+app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Logout failed' });
+        }
+        res.clearCookie('connect.sid');
+        res.json({ message: 'Logout successful' });
+    });
+});
+
+// Register endpoint (admin only)
+app.post('/api/auth/register', authenticateUser, authorizeRole(['admin']), async (req, res) => {
+    try {
+        const { username, password, email, role, employee_id } = req.body;
+        
+        if (!username || !password || !email) {
+            return res.status(400).json({ error: 'Username, password, and email are required' });
+        }
+        
+        // Check if username or email already exists
+        const [existingUsers] = await pool.execute(
+            'SELECT * FROM users WHERE username = ? OR email = ?',
+            [username, email]
+        );
+        
+        if (existingUsers.length > 0) {
+            return res.status(400).json({ error: 'Username or email already exists' });
+        }
+        
+        // Hash password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        
+        // Insert new user
+        const [result] = await pool.execute(
+            'INSERT INTO users (username, password, email, role, employee_id) VALUES (?, ?, ?, ?, ?)',
+            [username, hashedPassword, email, role || 'user', employee_id || null]
+        );
+        
+        res.status(201).json({
+            message: 'User registered successfully',
+            userId: result.insertId
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Registration failed' });
+    }
+});
+
+// Get current user info
+app.get('/api/auth/me', authenticateUser, async (req, res) => {
+    try {
+        const [users] = await pool.execute('SELECT id, username, email, role, employee_id FROM users WHERE id = ?', [req.user.id]);
+        
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        res.json(users[0]);
+    } catch (error) {
+        console.error('Error fetching user info:', error);
+        res.status(500).json({ error: 'Failed to fetch user info' });
+    }
+});
+
+// Attendance API endpoints
+
+// Get attendance for a specific date
+app.get('/api/attendance/:date', authenticateUser, async (req, res) => {
+    try {
+        const { date } = req.params;
+        
+        // Validate date format
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        // Get all employees with their attendance records for the specified date
+        const [employees] = await pool.execute(`
+            SELECT 
+                e.employee_id,
+                e.name,
+                e.department,
+                COALESCE(w.status, 'absent') as status
+            FROM employees e
+            LEFT JOIN work_records w ON e.employee_id = w.employee_id AND w.date = ?
+            WHERE e.status = 'active'
+            ORDER BY e.name
+        `, [date]);
+
+        res.json(employees);
+    } catch (error) {
+        console.error('Error fetching attendance data:', error);
+        res.status(500).json({ error: 'Failed to fetch attendance data' });
+    }
+});
+
+// Mark attendance for a single employee
+app.post('/api/attendance', authenticateUser, async (req, res) => {
+    try {
+        const { employee_id, date, status } = req.body;
+        
+        if (!employee_id || !date || !status) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        await pool.execute(`
+            INSERT INTO work_records (employee_id, date, status)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+            status = VALUES(status),
+            updated_at = CURRENT_TIMESTAMP
+        `, [employee_id, date, status]);
+
+        res.json({ message: 'Attendance marked successfully' });
+    } catch (error) {
+        console.error('Error marking attendance:', error);
+        res.status(500).json({ error: 'Failed to mark attendance' });
+    }
+});
+
+// Bulk mark attendance
+app.post('/api/attendance/bulk', authenticateUser, async (req, res) => {
+    try {
+        const { records } = req.body;
+        
+        if (!records || !Array.isArray(records) || records.length === 0) {
+            return res.status(400).json({ error: 'Invalid records data' });
+        }
+
+        // Start transaction
+        const connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        try {
+            for (const record of records) {
+                const { employee_id, date, status } = record;
+                
+                if (!employee_id || !date || !status) {
+                    throw new Error('Missing required fields in record');
+                }
+                
+                await connection.execute(`
+                    INSERT INTO work_records (employee_id, date, status)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                    status = VALUES(status),
+                    updated_at = CURRENT_TIMESTAMP
+                `, [employee_id, date, status]);
+            }
+
+            await connection.commit();
+            res.json({ message: 'Bulk attendance marked successfully' });
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error('Error marking bulk attendance:', error);
+        res.status(500).json({ error: 'Failed to mark bulk attendance' });
+    }
 });
 
 // Error handling middleware
