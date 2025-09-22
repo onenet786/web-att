@@ -2049,59 +2049,62 @@ async function showEmployeeDetailReport(employeeId, selectedMonth) {
         const month = parseInt(selectedMonth.split('-')[1]);
         const daysInMonth = new Date(year, month, 0).getDate();
         
+        // Create a map of work records by date
+        const workRecordsMap = {};
+        reportData.work_records.forEach(record => {
+            // Convert API date format (2025-09-20T19:00:00.000Z) to frontend format (2025-09-21)
+            const apiDate = new Date(record.date);
+            const frontendDate = apiDate.toISOString().split('T')[0];
+            workRecordsMap[frontendDate] = record.status;
+        });
+        
         // Generate calendar data for the month
         const reportCalendar = [];
         for (let day = 1; day <= daysInMonth; day++) {
-            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const workRecord = reportData.workRecords.find(record => record.date === dateStr);
-            
-            // Debug: Log the work record for troubleshooting
-            if (workRecord) {
-                console.log(`Found work record for ${dateStr}:`, workRecord);
-            } else {
-                console.log(`No work record found for ${dateStr}`);
-            }
+            const date = new Date(year, month - 1, day);
+            const dateString = date.toISOString().split('T')[0];
             
             // Check if it's a Sunday (day 0) - typically not a working day
-            const dayOfWeek = new Date(dateStr).getDay();
+            const dayOfWeek = date.getDay();
             const isSunday = dayOfWeek === 0;
             
-            // If no work record exists, check if it's a Sunday or weekend
+            // Use the same logic as individual report
             let status;
-            if (workRecord) {
-                status = workRecord.status;
+            if (workRecordsMap[dateString]) {
+                status = workRecordsMap[dateString];
             } else if (isSunday) {
                 status = 'weekend'; // Don't mark Sundays as absent
-                console.log(`Assigning 'weekend' status to ${dateStr} (Sunday)`);
             } else {
                 status = 'no-record'; // Use a different status for days without records
-                console.log(`Assigning 'no-record' status to ${dateStr}`);
             }
             
             reportCalendar.push({
                 day: day,
-                date: dateStr,
+                date: dateString,
                 status: status
             });
         }
         
         // Count different status types
         let presentDays = 0;
-        let lateDays = 0;
+        let absentDays = 0;
         let sickLeaveDays = 0;
         let vacationDays = 0;
+        let lateDays = 0;
         
-        // Safely iterate through workRecords
-        if (reportData.workRecords && Array.isArray(reportData.workRecords)) {
-            reportData.workRecords.forEach(record => {
-                switch(record.status) {
-                    case 'present': presentDays++; break;
-                    case 'late': lateDays++; break;
-                    case 'sick_leave': sickLeaveDays++; break;
-                    case 'vacation': vacationDays++; break;
-                }
-            });
-        }
+        reportData.work_records.forEach(record => {
+            if (record.status === 'present') {
+                presentDays++;
+            } else if (record.status === 'absent') {
+                absentDays++;
+            } else if (record.status === 'sick_leave') {
+                sickLeaveDays++;
+            } else if (record.status === 'vacation') {
+                vacationDays++;
+            } else if (record.status === 'late') {
+                lateDays++;
+            }
+        });
         
         // Calculate attendance rate based on working days (exclude Sundays)
         const workingDays = reportCalendar.filter(day => {
@@ -2135,6 +2138,15 @@ async function showEmployeeDetailReport(employeeId, selectedMonth) {
                     <div class="stat-info">
                         <h3>${presentDays}</h3>
                         <p>Present Days</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon absent">
+                        <i class="fas fa-calendar-times"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${absentDays}</h3>
+                        <p>Absent Days</p>
                     </div>
                 </div>
                 <div class="stat-card">
