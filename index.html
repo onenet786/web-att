@@ -134,6 +134,21 @@
             <div id="reports" class="tab-content">
                 <div class="reports-header">
                     <h2>Work Reports</h2>
+                    <div class="report-type-selector">
+                        <button class="btn btn-primary report-type-btn active" onclick="showReportType('individual')">
+                            <i class="fas fa-user"></i> Individual Report
+                        </button>
+                        <button class="btn btn-secondary report-type-btn" onclick="showReportType('total')">
+                            <i class="fas fa-users"></i> Total Employee Report
+                        </button>
+                        <button class="btn btn-secondary report-type-btn" onclick="showReportType('daily')">
+                            <i class="fas fa-calendar-day"></i> Daily Attendance Report
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Individual Report Section -->
+                <div id="individualReportSection" class="report-section">
                     <div class="report-controls">
                         <select id="reportEmployee" onchange="generateReport()">
                             <option value="">Select Employee</option>
@@ -146,6 +161,38 @@
                             </select>
                             <button class="btn btn-primary" onclick="exportReport()">
                                 <i class="fas fa-download"></i> Export Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Employee Report Section -->
+                <div id="totalReportSection" class="report-section" style="display: none;">
+                    <div class="report-controls">
+                        <input type="month" id="totalReportMonth" onchange="generateTotalReport()">
+                        <div class="export-controls">
+                            <select id="totalExportFormat">
+                                <option value="csv">CSV</option>
+                                <option value="pdf">PDF</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="exportTotalReport()">
+                                <i class="fas fa-download"></i> Export Total Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Daily Attendance Report Section -->
+                <div id="dailyReportSection" class="report-section" style="display: none;">
+                    <div class="report-controls">
+                        <input type="date" id="dailyReportDate" onchange="generateDailyReport()">
+                        <div class="export-controls">
+                            <select id="dailyExportFormat">
+                                <option value="csv">CSV</option>
+                                <option value="pdf">PDF</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="exportDailyReport()">
+                                <i class="fas fa-download"></i> Export Daily Report
                             </button>
                         </div>
                     </div>

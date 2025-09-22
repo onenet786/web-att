@@ -674,6 +674,144 @@ app.get('/api/reports/employee/:employee_id/:month', async (req, res) => {
     }
 });
 
+// Get total employee report for a specific month
+app.get('/api/reports/total/:month', async (req, res) => {
+    try {
+        const { month } = req.params;
+        const [year, monthNum] = month.split('-');
+        
+        // Get total active employees
+        const [totalEmployeesResult] = await pool.execute('SELECT COUNT(*) as count FROM employees WHERE status = "active"');
+        const totalEmployees = totalEmployeesResult[0].count;
+        
+        // Get all employees with their work records for the month
+        const [employeeData] = await pool.execute(`
+            SELECT 
+                e.employee_id,
+                e.name,
+                COUNT(wr.date) as totalDays,
+                SUM(CASE WHEN wr.status = 'present' THEN 1 ELSE 0 END) as presentDays,
+                SUM(CASE WHEN wr.status = 'absent' THEN 1 ELSE 0 END) as absentDays,
+                SUM(CASE WHEN wr.status = 'sick_leave' THEN 1 ELSE 0 END) as sickLeaveDays,
+                SUM(CASE WHEN wr.status = 'vacation' THEN 1 ELSE 0 END) as vacationDays
+            FROM employees e
+            LEFT JOIN work_records wr ON e.employee_id = wr.employee_id 
+                AND YEAR(wr.date) = ? AND MONTH(wr.date) = ?
+            WHERE e.status = 'active'
+            GROUP BY e.employee_id, e.name
+            ORDER BY e.name
+        `, [year, monthNum]);
+        
+        // Calculate days in month
+        const daysInMonth = new Date(year, monthNum, 0).getDate();
+        
+        // Process employee data and calculate totals
+        let totalPresentDays = 0;
+        let totalAbsentDays = 0;
+        
+        const employeeSummary = employeeData.map(emp => {
+            const presentDays = parseInt(emp.presentDays) || 0;
+            const absentDays = daysInMonth - presentDays; // Calculate absent as total days minus present days
+            const attendanceRate = daysInMonth > 0 ? Math.round((presentDays / daysInMonth) * 100) : 0;
+            
+            totalPresentDays += presentDays;
+            totalAbsentDays += absentDays;
+            
+            return {
+                employee_id: emp.employee_id,
+                name: emp.name,
+                presentDays: presentDays,
+                absentDays: absentDays,
+                attendanceRate: Math.min(attendanceRate, 100) // Cap at 100%
+            };
+        });
+        
+        // Calculate average attendance rate (ensure it doesn't exceed 100%)
+        const averageAttendanceRate = totalEmployees > 0 && daysInMonth > 0 ? 
+            Math.min(Math.round((totalPresentDays / (totalEmployees * daysInMonth)) * 100), 100) : 0;
+        
+        res.json({
+            totalEmployees: totalEmployees,
+            totalPresentDays: totalPresentDays,
+            totalAbsentDays: totalAbsentDays,
+            averageAttendanceRate: averageAttendanceRate,
+            employeeSummary: employeeSummary,
+            month: month,
+            daysInMonth: daysInMonth
+        });
+    } catch (error) {
+        console.error('Error fetching total report:', error);
+        res.status(500).json({ error: 'Failed to fetch total report' });
+    }
+});
+
+// Get daily attendance report for all employees
+app.get('/api/reports/daily/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        
+        // Validate date format
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        // Get all employees with their work records for the specified date
+        const [employees] = await pool.execute(`
+            SELECT 
+                e.employee_id,
+                e.name,
+                e.department,
+                e.position,
+                COALESCE(wr.status, 'absent') as status,
+                wr.check_in_time,
+                wr.check_out_time,
+                wr.notes
+            FROM employees e
+            LEFT JOIN work_records wr ON e.employee_id = wr.employee_id AND wr.date = ?
+            WHERE e.status = 'active'
+            ORDER BY e.department, e.name
+        `, [date]);
+
+        // Calculate summary statistics
+        const totalEmployees = employees.length;
+        const presentCount = employees.filter(emp => emp.status === 'present').length;
+        const absentCount = employees.filter(emp => emp.status === 'absent').length;
+        const lateCount = employees.filter(emp => emp.status === 'late').length;
+        const sickLeaveCount = employees.filter(emp => emp.status === 'sick_leave').length;
+        const vacationCount = employees.filter(emp => emp.status === 'vacation').length;
+        
+        // Calculate attendance rate (present + late employees are considered attending)
+        const attendingCount = presentCount + lateCount;
+
+        // Group employees by department
+        const departmentGroups = {};
+        employees.forEach(emp => {
+            if (!departmentGroups[emp.department]) {
+                departmentGroups[emp.department] = [];
+            }
+            departmentGroups[emp.department].push(emp);
+        });
+
+        res.json({
+            date: date,
+            summary: {
+                totalEmployees,
+                present: presentCount,
+                absent: absentCount,
+                late: lateCount,
+                sickLeave: sickLeaveCount,
+                vacation: vacationCount,
+                attendanceRate: totalEmployees > 0 ? Math.round((attendingCount / totalEmployees) * 100) : 0
+            },
+            employees: employees,
+            departmentGroups: departmentGroups
+        });
+    } catch (error) {
+        console.error('Error fetching daily report:', error);
+        res.status(500).json({ error: 'Failed to fetch daily report' });
+    }
+});
+
 // Get dashboard statistics
 app.get('/api/dashboard', async (req, res) => {
     try {

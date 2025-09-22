@@ -2,7 +2,498 @@
 
 // Global variables
 let employees = [];
-let workRecords = {};
+let workRecords = {}
+
+// Report Type Functions
+function showReportType(type) {
+    // Update button states
+    document.querySelectorAll('.report-type-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Show/hide report sections
+    const individualSection = document.getElementById('individualReportSection');
+    const totalSection = document.getElementById('totalReportSection');
+    const dailySection = document.getElementById('dailyReportSection');
+    const reportContent = document.getElementById('reportContent');
+    
+    if (type === 'individual') {
+        individualSection.style.display = 'block';
+        totalSection.style.display = 'none';
+        dailySection.style.display = 'none';
+        // Reset to individual report view
+        generateReport();
+    } else if (type === 'total') {
+        individualSection.style.display = 'none';
+        totalSection.style.display = 'block';
+        dailySection.style.display = 'none';
+        // Set default month and generate total report
+        const totalMonthInput = document.getElementById('totalReportMonth');
+        if (!totalMonthInput.value) {
+            const now = new Date();
+            totalMonthInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        }
+        generateTotalReport();
+    } else if (type === 'daily') {
+        individualSection.style.display = 'none';
+        totalSection.style.display = 'none';
+        dailySection.style.display = 'block';
+        // Set default date and generate daily report
+        const dailyDateInput = document.getElementById('dailyReportDate');
+        if (!dailyDateInput.value) {
+            const now = new Date();
+            dailyDateInput.value = now.toISOString().split('T')[0];
+        }
+        generateDailyReport();
+    }
+}
+
+// Daily Attendance Report Functions
+async function generateDailyReport() {
+    const dateInput = document.getElementById('dailyReportDate');
+    const reportContent = document.getElementById('reportContent');
+    
+    if (!dateInput.value) {
+        reportContent.innerHTML = '<p class="text-center text-muted">Please select a date to generate the daily attendance report.</p>';
+        return;
+    }
+
+    try {
+        const reportData = await apiCall(`/reports/daily/${dateInput.value}`);
+        
+        // Generate report HTML
+        let reportHTML = `
+            <div class="report-header">
+                <h3>Daily Attendance Report - ${formatDate(reportData.date)}</h3>
+            </div>
+            
+            <div class="report-stats">
+                <div class="stat-card">
+                    <div class="stat-number">${reportData.summary.totalEmployees}</div>
+                    <div class="stat-label">Total Employees</div>
+                </div>
+                <div class="stat-card present">
+                    <div class="stat-number">${reportData.summary.present}</div>
+                    <div class="stat-label">Present</div>
+                </div>
+                <div class="stat-card absent">
+                    <div class="stat-number">${reportData.summary.absent}</div>
+                    <div class="stat-label">Absent</div>
+                </div>
+                <div class="stat-card late">
+                    <div class="stat-number">${reportData.summary.late}</div>
+                    <div class="stat-label">Late</div>
+                </div>
+                <div class="stat-card sick-leave">
+                    <div class="stat-number">${reportData.summary.sickLeave}</div>
+                    <div class="stat-label">Sick Leave</div>
+                </div>
+                <div class="stat-card vacation">
+                    <div class="stat-number">${reportData.summary.vacation}</div>
+                    <div class="stat-label">Vacation</div>
+                </div>
+                <div class="stat-card attendance-rate">
+                    <div class="stat-number">${reportData.summary.attendanceRate}%</div>
+                    <div class="stat-label">Attendance Rate</div>
+                </div>
+            </div>
+            
+            <div class="daily-report-table">
+                <h4>Employee Details</h4>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Position</th>
+                            <th>Status</th>
+                            <th>Check In</th>
+                            <th>Check Out</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        // Add employee rows
+        reportData.employees.forEach(employee => {
+            const statusClass = employee.status.replace('_', '-');
+            const checkIn = employee.check_in_time ? new Date(`2000-01-01T${employee.check_in_time}`).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '-';
+            const checkOut = employee.check_out_time ? new Date(`2000-01-01T${employee.check_out_time}`).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '-';
+            
+            reportHTML += `
+                <tr>
+                    <td>${employee.employee_id}</td>
+                    <td>${employee.name}</td>
+                    <td>${employee.department}</td>
+                    <td>${employee.position}</td>
+                    <td><span class="status-badge ${statusClass}">${employee.status.replace('_', ' ').toUpperCase()}</span></td>
+                    <td>${checkIn}</td>
+                    <td>${checkOut}</td>
+                    <td>${employee.notes || '-'}</td>
+                </tr>
+            `;
+        });
+        
+        reportHTML += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        reportContent.innerHTML = reportHTML;
+        
+    } catch (error) {
+        console.error('Error generating daily report:', error);
+        reportContent.innerHTML = '<p class="text-center text-danger">Error loading daily report. Please try again.</p>';
+    }
+}
+
+async function exportDailyReport() {
+    const dateInput = document.getElementById('dailyReportDate');
+    const formatSelect = document.getElementById('dailyExportFormat');
+    
+    if (!dateInput.value) {
+        showMessage('Please select a date first', 'error');
+        return;
+    }
+    
+    try {
+        const response = await apiCall(`/reports/daily/${dateInput.value}`);
+        const reportData = await response.json();
+        
+        if (formatSelect.value === 'csv') {
+            exportDailyToCSV(reportData);
+        } else if (formatSelect.value === 'pdf') {
+            exportDailyToPDF(reportData);
+        }
+        
+        showMessage('Report exported successfully!', 'success');
+    } catch (error) {
+        console.error('Error exporting daily report:', error);
+        showMessage('Error exporting report. Please try again.', 'error');
+    }
+}
+
+function exportDailyToCSV(reportData) {
+    const csvContent = [
+        ['Daily Attendance Report - ' + formatDate(reportData.date)],
+        [''],
+        ['Summary'],
+        ['Total Employees', reportData.summary.totalEmployees],
+        ['Present', reportData.summary.present],
+        ['Absent', reportData.summary.absent],
+        ['Late', reportData.summary.late],
+        ['Sick Leave', reportData.summary.sickLeave],
+        ['Vacation', reportData.summary.vacation],
+        ['Attendance Rate', reportData.summary.attendanceRate + '%'],
+        [''],
+        ['Employee Details'],
+        ['Employee ID', 'Name', 'Department', 'Position', 'Status', 'Check In', 'Check Out', 'Notes'],
+        ...reportData.employees.map(emp => [
+            emp.employee_id,
+            emp.name,
+            emp.department,
+            emp.position,
+            emp.status.replace('_', ' ').toUpperCase(),
+            emp.check_in_time || '-',
+            emp.check_out_time || '-',
+            emp.notes || '-'
+        ])
+    ].map(row => row.join(',')).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `daily_attendance_report_${reportData.date}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+function exportDailyToPDF(reportData) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(18);
+    doc.text('Daily Attendance Report', 20, 20);
+    doc.setFontSize(14);
+    doc.text(formatDate(reportData.date), 20, 30);
+    
+    // Summary
+    doc.setFontSize(12);
+    doc.text('Summary:', 20, 50);
+    let yPos = 60;
+    
+    const summaryData = [
+        ['Total Employees:', reportData.summary.totalEmployees],
+        ['Present:', reportData.summary.present],
+        ['Absent:', reportData.summary.absent],
+        ['Late:', reportData.summary.late],
+        ['Sick Leave:', reportData.summary.sickLeave],
+        ['Vacation:', reportData.summary.vacation],
+        ['Attendance Rate:', reportData.summary.attendanceRate + '%']
+    ];
+    
+    summaryData.forEach(([label, value]) => {
+        doc.text(label, 20, yPos);
+        doc.text(String(value), 80, yPos);
+        yPos += 8;
+    });
+    
+    // Employee table
+    yPos += 10;
+    doc.text('Employee Details:', 20, yPos);
+    yPos += 10;
+    
+    const tableData = reportData.employees.map(emp => [
+        emp.employee_id,
+        emp.name,
+        emp.department,
+        emp.status.replace('_', ' ').toUpperCase(),
+        emp.check_in_time || '-',
+        emp.check_out_time || '-'
+    ]);
+    
+    doc.autoTable({
+        head: [['ID', 'Name', 'Department', 'Status', 'Check In', 'Check Out']],
+        body: tableData,
+        startY: yPos,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [41, 128, 185] }
+    });
+    
+    doc.save(`daily_attendance_report_${reportData.date}.pdf`);
+}
+
+// Total Employee Report Functions
+async function generateTotalReport() {
+    const monthInput = document.getElementById('totalReportMonth');
+    const reportContent = document.getElementById('reportContent');
+    
+    // Set default month to current month
+    if (!monthInput.value) {
+        const now = new Date();
+        monthInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    }
+    
+    const selectedMonth = monthInput.value;
+    
+    if (!selectedMonth) {
+        reportContent.innerHTML = '<div class="empty-state"><i class="fas fa-chart-bar"></i><h3>Select a month</h3><p>Choose a month to generate total employee report.</p></div>';
+        return;
+    }
+    
+    try {
+        const reportData = await apiCall(`/reports/total/${selectedMonth}`);
+        
+        const year = parseInt(selectedMonth.split('-')[0]);
+        const month = parseInt(selectedMonth.split('-')[1]);
+        const daysInMonth = new Date(year, month, 0).getDate();
+        
+        reportContent.innerHTML = `
+            <div class="report-header">
+                <h3>Total Employee Report</h3>
+                <p>Month: ${new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+            </div>
+            
+            <!-- Statistics section with Total Employees visible, others hidden -->
+            <div class="report-stats">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${reportData.totalEmployees}</h3>
+                        <p>Total Employees</p>
+                    </div>
+                </div>
+                <div class="stat-card" style="display: none;">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${reportData.totalPresentDays || 0}</h3>
+                        <p>Total Present Days</p>
+                    </div>
+                </div>
+                <div class="stat-card" style="display: none;">
+                    <div class="stat-icon absent">
+                        <i class="fas fa-calendar-times"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${reportData.totalAbsentDays || 0}</h3>
+                        <p>Total Absent Days</p>
+                    </div>
+                </div>
+                <div class="stat-card" style="display: none;">
+                    <div class="stat-icon">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${reportData.averageAttendanceRate || 0}%</h3>
+                        <p>Average Attendance Rate</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Search functionality -->
+            <div class="search-section">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="employeeSearch" placeholder="Search by name or employee ID..." onkeyup="searchTotalReportEmployees()">
+                </div>
+            </div>
+            
+            <div class="employee-summary-table">
+                <h4>Employee Summary</h4>
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Name</th>
+                            <th>Present Days</th>
+                            <th>Absent Days</th>
+                            <th>Attendance Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeeSummaryBody">
+                        ${reportData.employeeSummary.map(emp => `
+                            <tr class="employee-row" onclick="showEmployeeDetailReport('${emp.employee_id}', '${selectedMonth}')" style="cursor: pointer;">
+                                <td>${emp.employee_id}</td>
+                                <td>${emp.name}</td>
+                                <td class="present-count">${emp.presentDays}</td>
+                                <td class="absent-count">${emp.absentDays}</td>
+                                <td class="attendance-rate">${emp.attendanceRate}%</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Individual employee report section (initially hidden) -->
+            <div id="individualEmployeeReport" style="display: none; margin-top: 30px;">
+                <div class="report-header">
+                    <h4 id="individualReportTitle">Employee Detail Report</h4>
+                    <button class="btn btn-secondary" onclick="hideIndividualReport()">
+                        <i class="fas fa-arrow-left"></i> Back to Summary
+                    </button>
+                </div>
+                <div id="individualReportContent"></div>
+            </div>
+        `;
+        
+        // Store report data for search functionality
+        window.currentTotalReportData = reportData;
+        
+    } catch (error) {
+        console.error('Error generating total report:', error);
+        reportContent.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Error loading report</h3><p>Failed to load total employee report. Please try again.</p></div>';
+    }
+}
+
+async function exportTotalReport() {
+    const monthInput = document.getElementById('totalReportMonth');
+    const formatSelect = document.getElementById('totalExportFormat');
+    
+    const selectedMonth = monthInput.value;
+    const format = formatSelect.value;
+    
+    if (!selectedMonth) {
+        showMessage('Please select a month first', 'error');
+        return;
+    }
+    
+    try {
+        const reportData = await apiCall(`/reports/total/${selectedMonth}`);
+        
+        if (format === 'csv') {
+            exportTotalToCSV(reportData, selectedMonth);
+        } else if (format === 'pdf') {
+            exportTotalToPDF(reportData, selectedMonth);
+        }
+        
+        showMessage('Total report exported successfully!', 'success');
+    } catch (error) {
+        console.error('Export failed:', error);
+        showMessage('Failed to export total report', 'error');
+    }
+}
+
+function exportTotalToCSV(reportData, selectedMonth) {
+    const year = parseInt(selectedMonth.split('-')[0]);
+    const month = parseInt(selectedMonth.split('-')[1]);
+    const monthName = new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    
+    let csvContent = `Total Employee Report - ${monthName}\n\n`;
+    csvContent += `Total Employees,${reportData.totalEmployees}\n`;
+    csvContent += `Total Present Days,${reportData.totalPresentDays}\n`;
+    csvContent += `Total Absent Days,${reportData.totalAbsentDays}\n`;
+    csvContent += `Average Attendance Rate,${reportData.averageAttendanceRate}%\n\n`;
+    
+    csvContent += 'Employee ID,Name,Present Days,Absent Days,Attendance Rate\n';
+    reportData.employeeSummary.forEach(emp => {
+        csvContent += `${emp.employee_id},${emp.name},${emp.presentDays},${emp.absentDays},${emp.attendanceRate}%\n`;
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `total_employee_report_${selectedMonth}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+function exportTotalToPDF(reportData, selectedMonth) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    const year = parseInt(selectedMonth.split('-')[0]);
+    const month = parseInt(selectedMonth.split('-')[1]);
+    const monthName = new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    
+    // Header
+    doc.setFontSize(20);
+    doc.text('Total Employee Report', 20, 30);
+    doc.setFontSize(14);
+    doc.text(`Month: ${monthName}`, 20, 45);
+    
+    // Summary stats
+    doc.setFontSize(12);
+    doc.text(`Total Employees: ${reportData.totalEmployees}`, 20, 65);
+    doc.text(`Total Present Days: ${reportData.totalPresentDays}`, 20, 75);
+    doc.text(`Total Absent Days: ${reportData.totalAbsentDays}`, 20, 85);
+    doc.text(`Average Attendance Rate: ${reportData.averageAttendanceRate}%`, 20, 95);
+    
+    // Employee table header
+    doc.text('Employee Summary:', 20, 115);
+    doc.text('ID', 20, 130);
+    doc.text('Name', 50, 130);
+    doc.text('Present', 110, 130);
+    doc.text('Absent', 140, 130);
+    doc.text('Rate', 170, 130);
+    
+    // Employee data
+    let yPos = 145;
+    reportData.employeeSummary.forEach(emp => {
+        if (yPos > 270) {
+            doc.addPage();
+            yPos = 30;
+        }
+        doc.text(emp.employee_id, 20, yPos);
+        doc.text(emp.name.substring(0, 20), 50, yPos);
+        doc.text(emp.presentDays.toString(), 110, yPos);
+        doc.text(emp.absentDays.toString(), 140, yPos);
+        doc.text(`${emp.attendanceRate}%`, 170, yPos);
+        yPos += 15;
+    });
+    
+    doc.save(`total_employee_report_${selectedMonth}.pdf`);
+};
 let currentDate = new Date().toISOString().split('T')[0];
 const API_BASE_URL = 'http://localhost:3000/api';
 
@@ -108,11 +599,15 @@ async function updateDashboard() {
         // Update dashboard stats
         document.getElementById('totalEmployees').textContent = dashboardData.totalEmployees;
         document.getElementById('presentToday').textContent = dashboardData.todayWorkRecords.present || 0;
-        document.getElementById('absentToday').textContent = dashboardData.todayWorkRecords.absent || 0;
         
-        const totalMarked = (dashboardData.todayWorkRecords.present || 0) + (dashboardData.todayWorkRecords.absent || 0);
-        const attendanceRate = dashboardData.totalEmployees > 0 ? 
-            Math.round(((dashboardData.todayWorkRecords.present || 0) / dashboardData.totalEmployees) * 100) : 0;
+        // Calculate absent as total employees minus present employees
+        const totalEmployees = dashboardData.totalEmployees;
+        const presentToday = dashboardData.todayWorkRecords.present || 0;
+        const absentToday = totalEmployees - presentToday;
+        document.getElementById('absentToday').textContent = absentToday;
+        
+        const attendanceRate = totalEmployees > 0 ? 
+            Math.round((presentToday / totalEmployees) * 100) : 0;
         document.getElementById('attendanceRate').textContent = attendanceRate + '%';
 
         // Update recent activity
@@ -125,17 +620,15 @@ async function updateDashboard() {
         const todayWorkRecords = workRecords[today] || {};
         
         let presentCount = 0;
-        let absentCount = 0;
         
         employees.forEach(employee => {
             const employeeWorkRecord = todayWorkRecords[employee.employee_id];
             if (employeeWorkRecord === 'present') {
                 presentCount++;
-            } else if (employeeWorkRecord === 'absent') {
-                absentCount++;
             }
         });
 
+        const absentCount = totalEmployees - presentCount;
         const attendanceRate = totalEmployees > 0 ? Math.round((presentCount / totalEmployees) * 100) : 0;
 
         document.getElementById('totalEmployees').textContent = totalEmployees;
@@ -865,7 +1358,7 @@ async function generateReport() {
         let absentDays = 0;
         let sickLeaveDays = 0;
         let vacationDays = 0;
-        let totalDays = reportData.work_records.length;
+        let lateDays = 0;
         
         const workRecordsMap = {};
         reportData.work_records.forEach(record => {
@@ -881,6 +1374,8 @@ async function generateReport() {
                 sickLeaveDays++;
             } else if (record.status === 'vacation') {
                 vacationDays++;
+            } else if (record.status === 'late') {
+                lateDays++;
             }
         });
         
@@ -888,7 +1383,20 @@ async function generateReport() {
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(year, month - 1, day);
             const dateString = date.toISOString().split('T')[0];
-            const status = workRecordsMap[dateString] || 'not-marked';
+            
+            // Check if it's a Sunday (day 0) - typically not a working day
+            const dayOfWeek = date.getDay();
+            const isSunday = dayOfWeek === 0;
+            
+            // Use the same logic as individual report
+            let status;
+            if (workRecordsMap[dateString]) {
+                status = workRecordsMap[dateString];
+            } else if (isSunday) {
+                status = 'weekend'; // Don't mark Sundays as absent
+            } else {
+                status = 'no-record'; // Use a different status for days without records
+            }
             
             reportCalendar.push({
                 date: dateString,
@@ -898,7 +1406,15 @@ async function generateReport() {
             });
         }
         
-        const attendanceRate = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+        // Calculate attendance rate based on working days (exclude Sundays)
+        const workingDays = reportCalendar.filter(day => {
+            const dayOfWeek = new Date(day.date).getDay();
+            return dayOfWeek !== 0; // Exclude Sunday (0)
+        }).length;
+        
+        // Count attending days (present + late)
+        const attendingDays = presentDays + lateDays;
+        const attendanceRate = workingDays > 0 ? Math.round((attendingDays / workingDays) * 100) : 0;
         
         reportContent.innerHTML = `
             <div class="report-header">
@@ -957,18 +1473,25 @@ async function generateReport() {
             <div class="report-calendar">
                 <h4>Daily Work Records</h4>
                 <div class="calendar-grid">
-                    ${reportCalendar.map(day => `
-                        <div class="calendar-day ${day.status}">
+                    ${reportCalendar.map(day => {
+                        const dayOfWeek = new Date(day.date).getDay();
+                        const isSunday = dayOfWeek === 0;
+                        console.log(`Total Report - Day: ${day.day}, Status: ${day.status}, isSunday: ${isSunday}`);
+                        return `
+                        <div class="calendar-day ${day.status} ${isSunday ? 'sunday' : ''}">
                             <div class="day-number">${day.day}</div>
                             <div class="day-status">
                                 ${day.status === 'present' ? '<i class="fas fa-check"></i>' : 
                                   day.status === 'absent' ? '<i class="fas fa-times"></i>' : 
                                   day.status === 'sick_leave' ? '<i class="fas fa-thermometer-half"></i>' :
                                   day.status === 'vacation' ? '<i class="fas fa-plane"></i>' :
+                                  day.status === 'late' ? '<i class="fas fa-clock"></i>' :
+                                  day.status === 'weekend' ? '<i class="fas fa-calendar-times"></i>' :
+                                  day.status === 'no-record' ? '<i class="fas fa-question"></i>' :
                                   '<i class="fas fa-minus"></i>'}
                             </div>
-                        </div>
-                    `).join('')}
+                        </div>`;
+                    }).join('')}
                 </div>
             </div>
         `;
@@ -1502,7 +2025,226 @@ function initializeApp() {
     });
 }
 
-// Add CSS for report calendar
+// Add CSS for report calendar}
+
+// Function to show individual employee detail report
+async function showEmployeeDetailReport(employeeId, selectedMonth) {
+    const individualReportSection = document.getElementById('individualEmployeeReport');
+    const individualReportContent = document.getElementById('individualReportContent');
+    const individualReportTitle = document.getElementById('individualReportTitle');
+    
+    try {
+        // Fetch individual employee report data
+        const reportData = await apiCall(`/reports/employee/${employeeId}/${selectedMonth}`);
+        
+        // Check if reportData and work_records exist
+        if (!reportData || !reportData.work_records) {
+            throw new Error('Invalid report data received from server');
+        }
+        
+        // Normalize the data structure for compatibility
+        reportData.workRecords = reportData.work_records;
+        
+        const year = parseInt(selectedMonth.split('-')[0]);
+        const month = parseInt(selectedMonth.split('-')[1]);
+        const daysInMonth = new Date(year, month, 0).getDate();
+        
+        // Generate calendar data for the month
+        const reportCalendar = [];
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const workRecord = reportData.workRecords.find(record => record.date === dateStr);
+            
+            // Debug: Log the work record for troubleshooting
+            if (workRecord) {
+                console.log(`Found work record for ${dateStr}:`, workRecord);
+            } else {
+                console.log(`No work record found for ${dateStr}`);
+            }
+            
+            // Check if it's a Sunday (day 0) - typically not a working day
+            const dayOfWeek = new Date(dateStr).getDay();
+            const isSunday = dayOfWeek === 0;
+            
+            // If no work record exists, check if it's a Sunday or weekend
+            let status;
+            if (workRecord) {
+                status = workRecord.status;
+            } else if (isSunday) {
+                status = 'weekend'; // Don't mark Sundays as absent
+                console.log(`Assigning 'weekend' status to ${dateStr} (Sunday)`);
+            } else {
+                status = 'no-record'; // Use a different status for days without records
+                console.log(`Assigning 'no-record' status to ${dateStr}`);
+            }
+            
+            reportCalendar.push({
+                day: day,
+                date: dateStr,
+                status: status
+            });
+        }
+        
+        // Count different status types
+        let presentDays = 0;
+        let lateDays = 0;
+        let sickLeaveDays = 0;
+        let vacationDays = 0;
+        
+        // Safely iterate through workRecords
+        if (reportData.workRecords && Array.isArray(reportData.workRecords)) {
+            reportData.workRecords.forEach(record => {
+                switch(record.status) {
+                    case 'present': presentDays++; break;
+                    case 'late': lateDays++; break;
+                    case 'sick_leave': sickLeaveDays++; break;
+                    case 'vacation': vacationDays++; break;
+                }
+            });
+        }
+        
+        // Calculate attendance rate based on working days (exclude Sundays)
+        const workingDays = reportCalendar.filter(day => {
+            const dayOfWeek = new Date(day.date).getDay();
+            return dayOfWeek !== 0; // Exclude Sunday (0)
+        }).length;
+        
+        // Count attending days (present + late)
+        const attendingDays = presentDays + lateDays;
+        const attendanceRate = workingDays > 0 ? Math.round((attendingDays / workingDays) * 100) : 0;
+        
+        individualReportTitle.textContent = `${reportData.employee.name} - ${new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+        
+        individualReportContent.innerHTML = `
+            <div class="employee-info">
+                <div class="employee-card">
+                    <div class="employee-details">
+                        <h4>${reportData.employee.name}</h4>
+                        <p><strong>Employee ID:</strong> ${reportData.employee.employee_id}</p>
+                        <p><strong>Department:</strong> ${reportData.employee.department}</p>
+                        <p><strong>Position:</strong> ${reportData.employee.position}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="report-stats">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${presentDays}</h3>
+                        <p>Present Days</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${lateDays}</h3>
+                        <p>Late Days</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-thermometer-half"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${sickLeaveDays}</h3>
+                        <p>Sick Leave</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-plane"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${vacationDays}</h3>
+                        <p>Vacation Days</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${attendanceRate}%</h3>
+                        <p>Attendance Rate</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="report-calendar">
+                <h4>Daily Work Records</h4>
+                <div class="calendar-grid">
+                    ${reportCalendar.map(day => {
+                        const dayOfWeek = new Date(day.date).getDay();
+                        const isSunday = dayOfWeek === 0;
+                        return `
+                        <div class="calendar-day ${day.status} ${isSunday ? 'sunday' : ''}">
+                            <div class="day-number">${day.day}</div>
+                            <div class="day-status">
+                                ${day.status === 'present' ? '<i class="fas fa-check"></i>' : 
+                                  day.status === 'absent' ? '<i class="fas fa-times"></i>' : 
+                                  day.status === 'sick_leave' ? '<i class="fas fa-thermometer-half"></i>' :
+                                  day.status === 'vacation' ? '<i class="fas fa-plane"></i>' :
+                                  day.status === 'late' ? '<i class="fas fa-clock"></i>' :
+                                  day.status === 'weekend' ? '<i class="fas fa-calendar-times"></i>' :
+                                  day.status === 'no-record' ? '<i class="fas fa-question"></i>' :
+                                  '<i class="fas fa-minus"></i>'}
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+        
+        // Show the individual report section
+        individualReportSection.style.display = 'block';
+        
+        // Scroll to the individual report
+        individualReportSection.scrollIntoView({ behavior: 'smooth' });
+        
+    } catch (error) {
+        console.error('Error loading individual employee report:', error);
+        individualReportContent.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Error loading report</h3><p>Failed to load employee report. Please try again.</p></div>';
+        individualReportSection.style.display = 'block';
+    }
+}
+
+// Function to hide individual employee report
+function hideIndividualReport() {
+    const individualReportSection = document.getElementById('individualEmployeeReport');
+    individualReportSection.style.display = 'none';
+}
+
+// Function to search employees in total report
+function searchTotalReportEmployees() {
+    const searchInput = document.getElementById('employeeSearch');
+    const searchTerm = searchInput.value.toLowerCase();
+    const employeeSummaryBody = document.getElementById('employeeSummaryBody');
+    
+    if (!window.currentTotalReportData) return;
+    
+    const filteredEmployees = window.currentTotalReportData.employeeSummary.filter(emp => 
+        emp.name.toLowerCase().includes(searchTerm) || 
+        emp.employee_id.toLowerCase().includes(searchTerm)
+    );
+    
+    const selectedMonth = document.getElementById('totalReportMonth').value;
+    
+    employeeSummaryBody.innerHTML = filteredEmployees.map(emp => `
+        <tr class="employee-row" onclick="showEmployeeDetailReport('${emp.employee_id}', '${selectedMonth}')" style="cursor: pointer;">
+            <td>${emp.employee_id}</td>
+            <td>${emp.name}</td>
+            <td class="present-count">${emp.presentDays}</td>
+            <td class="absent-count">${emp.absentDays}</td>
+            <td class="attendance-rate">${emp.attendanceRate}%</td>
+        </tr>
+    `).join('');
+}
+
 const additionalCSS = `
 .report-stats {
     display: grid;
@@ -1531,28 +2273,46 @@ const additionalCSS = `
     transition: all 0.3s ease;
 }
 
+.calendar-day.sunday {
+    background: #fef3c7 !important;
+    border-color: #fbbf24 !important;
+    color: #92400e !important;
+}
+
 .calendar-day.present {
-    background: #c6f6d5;
-    border-color: #9ae6b4;
-    color: #22543d;
+    background: #c6f6d5 !important;
+    border-color: #9ae6b4 !important;
+    color: #22543d !important;
 }
 
 .calendar-day.absent {
-    background: #fed7d7;
-    border-color: #feb2b2;
-    color: #742a2a;
+    background: #fed7d7 !important;
+    border-color: #feb2b2 !important;
+    color: #742a2a !important;
 }
 
 .calendar-day.sick-leave {
-    background: #fef5e7;
-    border-color: #f6e05e;
-    color: #744210;
+    background: #fef5e7 !important;
+    border-color: #f6e05e !important;
+    color: #744210 !important;
 }
 
 .calendar-day.personal-leave {
-    background: #e6fffa;
-    border-color: #81e6d9;
-    color: #234e52;
+    background: #e6fffa !important;
+    border-color: #81e6d9 !important;
+    color: #234e52 !important;
+}
+
+.calendar-day.weekend {
+    background: #fef3c7 !important;
+    border-color: #fbbf24 !important;
+    color: #92400e !important;
+}
+
+.calendar-day.no-record {
+    background: #fef3c7 !important;
+    border-color: #fbbf24 !important;
+    color: #92400e !important;
 }
 
 .day-number {
