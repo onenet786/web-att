@@ -1084,6 +1084,89 @@ app.get('/api/auth/me', authenticateUser, async (req, res) => {
 
 // Attendance API endpoints
 
+// Get recent activity endpoint (must come before parameterized routes)
+app.get('/api/attendance/recent-activity', authenticateUser, async (req, res) => {
+    try {
+        // Get the most recent work record with employee details
+        const [recentActivity] = await pool.execute(`
+            SELECT 
+                wr.employee_id,
+                wr.date,
+                wr.check_in_time,
+                wr.check_out_time,
+                wr.created_at,
+                wr.updated_at,
+                e.name,
+                e.department,
+                e.picture
+            FROM work_records wr
+            JOIN employees e ON wr.employee_id = e.employee_id
+            WHERE e.status = 'active' 
+            AND (wr.check_in_time IS NOT NULL OR wr.check_out_time IS NOT NULL)
+            ORDER BY 
+                CASE 
+                    WHEN wr.check_out_time IS NOT NULL THEN CONCAT(wr.date, ' ', wr.check_out_time)
+                    WHEN wr.check_in_time IS NOT NULL THEN CONCAT(wr.date, ' ', wr.check_in_time)
+                    ELSE wr.updated_at
+                END DESC
+            LIMIT 1
+        `);
+
+        if (recentActivity.length === 0) {
+            return res.json(null); // No recent activity
+        }
+
+        const activity = recentActivity[0];
+        
+        // Determine if this was a check-in or check-out based on timestamps
+        let action = 'checkin';
+        let timestamp = activity.check_in_time;
+        
+        // If there's a check-out time and it's more recent than check-in, it's a checkout
+        if (activity.check_out_time && activity.check_in_time) {
+            const checkinDateTime = new Date(`${activity.date} ${activity.check_in_time}`);
+            const checkoutDateTime = new Date(`${activity.date} ${activity.check_out_time}`);
+            
+            if (checkoutDateTime > checkinDateTime) {
+                action = 'checkout';
+                timestamp = activity.check_out_time;
+            }
+        } else if (activity.check_out_time && !activity.check_in_time) {
+            action = 'checkout';
+            timestamp = activity.check_out_time;
+        }
+
+        // Create full timestamp for the activity - only if timestamp is not null
+        let activityTimestamp = null;
+        if (timestamp) {
+            try {
+                activityTimestamp = new Date(`${activity.date} ${timestamp}`);
+                // Validate the date is valid
+                if (isNaN(activityTimestamp.getTime())) {
+                    activityTimestamp = null;
+                }
+            } catch (error) {
+                console.error('Error creating timestamp:', error);
+                activityTimestamp = null;
+            }
+        }
+
+        res.json({
+            employee_id: activity.employee_id,
+            name: activity.name,
+            department: activity.department,
+            picture: activity.picture,
+            action: action,
+            timestamp: activityTimestamp ? activityTimestamp.toISOString() : null,
+            date: activity.date
+        });
+
+    } catch (error) {
+        console.error('Error fetching recent activity:', error);
+        res.status(500).json({ error: 'Failed to fetch recent activity' });
+    }
+});
+
 // Get attendance for a specific date
 app.get('/api/attendance/:date', authenticateUser, async (req, res) => {
     try {
@@ -1100,6 +1183,7 @@ app.get('/api/attendance/:date', authenticateUser, async (req, res) => {
                 e.employee_id,
                 e.name,
                 e.department,
+                e.picture,
                 COALESCE(w.status, 'absent') as status
             FROM employees e
             LEFT JOIN work_records w ON e.employee_id = w.employee_id AND w.date = ?
@@ -1179,6 +1263,165 @@ app.post('/api/attendance/bulk', authenticateUser, async (req, res) => {
     } catch (error) {
         console.error('Error marking bulk attendance:', error);
         res.status(500).json({ error: 'Failed to mark bulk attendance' });
+    }
+});
+
+// Employee self check-in endpoint
+app.post('/api/employee/checkin', authenticateUser, async (req, res) => {
+    try {
+        const { employee_code, date } = req.body;
+        
+        if (!employee_code || !date) {
+            return res.status(400).json({ error: 'Employee code and date are required' });
+        }
+
+        // Validate date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        // Find employee by employee_id (employee code)
+        const [employees] = await pool.execute(`
+            SELECT employee_id, name, department, status
+            FROM employees 
+            WHERE employee_id = ? AND status = 'active'
+        `, [employee_code]);
+
+        if (employees.length === 0) {
+            return res.status(404).json({ error: 'Employee not found or inactive' });
+        }
+
+        const employee = employees[0];
+
+        // Check if attendance is already marked for today
+        const [existingRecords] = await pool.execute(`
+            SELECT status, check_in_time, created_at
+            FROM work_records 
+            WHERE employee_id = ? AND date = ?
+        `, [employee_code, date]);
+
+        const currentTime = new Date().toLocaleTimeString('en-US', { 
+            hour12: false, 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+
+        if (existingRecords.length > 0) {
+            const existingRecord = existingRecords[0];
+            const checkinTime = existingRecord.check_in_time || 
+                              existingRecord.created_at.toLocaleTimeString('en-US', { 
+                                  hour12: false, 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                              });
+            
+            return res.json({
+                alreadyCheckedIn: true,
+                message: 'Attendance already marked for today',
+                employee: employee.name,
+                checkinTime: checkinTime,
+                status: existingRecord.status
+            });
+        }
+
+        // Mark attendance as present with check-in time
+        await pool.execute(`
+            INSERT INTO work_records (employee_id, date, status, check_in_time)
+            VALUES (?, ?, 'present', ?)
+        `, [employee_code, date, currentTime]);
+
+        res.json({
+            alreadyCheckedIn: false,
+            message: 'Attendance marked successfully',
+            employee: employee.name,
+            checkinTime: currentTime,
+            status: 'present'
+        });
+
+    } catch (error) {
+        console.error('Error in employee check-in:', error);
+        res.status(500).json({ error: 'Failed to process check-in' });
+    }
+});
+
+// Test endpoint for recent activity (no auth required)
+app.get('/api/test/recent-activity', async (req, res) => {
+    try {
+        // Get the most recent work record with employee details
+        const [recentActivity] = await pool.execute(`
+            SELECT 
+                wr.employee_id,
+                wr.date,
+                wr.check_in_time,
+                wr.check_out_time,
+                wr.created_at,
+                wr.updated_at,
+                e.name,
+                e.department,
+                e.picture
+            FROM work_records wr
+            JOIN employees e ON wr.employee_id = e.employee_id
+            WHERE e.status = 'active' 
+            AND (wr.check_in_time IS NOT NULL OR wr.check_out_time IS NOT NULL)
+            ORDER BY 
+                CASE 
+                    WHEN wr.check_out_time IS NOT NULL THEN CONCAT(wr.date, ' ', wr.check_out_time)
+                    WHEN wr.check_in_time IS NOT NULL THEN CONCAT(wr.date, ' ', wr.check_in_time)
+                    ELSE wr.updated_at
+                END DESC
+            LIMIT 1
+        `);
+
+        console.log('Test recent activity query result:', recentActivity);
+
+        if (recentActivity.length === 0) {
+            console.log('No recent activity found');
+            return res.json(null); // No recent activity
+        }
+
+        const activity = recentActivity[0];
+        console.log('Found activity:', activity);
+        
+        // Determine if this was a check-in or check-out based on timestamps
+        let action = 'checkin';
+        let timestamp = activity.check_in_time;
+        
+        // If there's a check-out time and it's more recent than check-in, it's a checkout
+        if (activity.check_out_time && activity.check_in_time) {
+            const checkinDateTime = new Date(`${activity.date} ${activity.check_in_time}`);
+            const checkoutDateTime = new Date(`${activity.date} ${activity.check_out_time}`);
+            
+            if (checkoutDateTime > checkinDateTime) {
+                action = 'checkout';
+                timestamp = activity.check_out_time;
+            }
+        } else if (activity.check_out_time && !activity.check_in_time) {
+            action = 'checkout';
+            timestamp = activity.check_out_time;
+        }
+
+        // Create full timestamp for the activity - only if timestamp is not null
+        let activityTimestamp = null;
+        if (timestamp) {
+            activityTimestamp = new Date(`${activity.date} ${timestamp}`);
+        }
+
+        const result = {
+            employee_id: activity.employee_id,
+            name: activity.name,
+            department: activity.department,
+            picture: activity.picture,
+            action: action,
+            timestamp: activityTimestamp ? activityTimestamp.toISOString() : null,
+            date: activity.date
+        };
+
+        console.log('Returning result:', result);
+        res.json(result);
+
+    } catch (error) {
+        console.error('Error fetching test recent activity:', error);
+        res.status(500).json({ error: 'Failed to fetch recent activity' });
     }
 });
 
