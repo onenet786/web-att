@@ -1,19 +1,26 @@
 {
   "name": "employee-management-system",
   "version": "1.0.0",
-  "description": "Web-based employee management system with MySQL database",
-  "main": "server.js",
+  "description": "Employee management system with MySQL database - Web and Desktop versions",
+  "main": "main.js",
+  "homepage": "./",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "init-db": "node init-database.js"
+    "init-db": "node init-database.js",
+    "electron": "electron .",
+    "electron-dev": "concurrently \"npm run start\" \"wait-on http://localhost:3000 && electron .\"",
+    "build": "electron-builder",
+    "dist": "electron-builder --publish=never"
   },
   "dependencies": {
+    "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "body-parser": "^1.20.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
+    "electron-is-dev": "^3.0.1",
     "express": "^4.18.2",
     "express-session": "^1.18.2",
     "jsonwebtoken": "^9.0.2",
@@ -21,6 +28,8 @@
     "mysql2": "^3.6.5"
   },
   "devDependencies": {
+    "electron": "^38.1.2",
+    "electron-builder": "^26.0.12",
     "nodemon": "^3.0.2"
   },
   "keywords": [
@@ -30,8 +39,41 @@
     "management",
     "mysql",
     "nodejs",
-    "express"
+    "express",
+    "electron",
+    "desktop-app"
   ],
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "build": {
+    "appId": "com.company.attendance-system",
+    "productName": "Employee Attendance System",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "attendance.html",
+      "login.html",
+      "index.html",
+      "script.js",
+      "styles.css",
+      "server.js",
+      "init-database.js",
+      "package.json",
+      "assets/**/*",
+      "uploads/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
 }

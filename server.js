@@ -211,11 +211,11 @@ async function createTables() {
                 status ENUM('present', 'absent', 'late', 'sick_leave', 'vacation') DEFAULT 'absent',
                 check_in_time TIME,
                 check_out_time TIME,
+                checkout_reason VARCHAR(100),
                 hours_worked DECIMAL(4,2),
                 notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                UNIQUE KEY unique_work_record (employee_id, date),
                 INDEX idx_employee_date (employee_id, date),
                 INDEX idx_date (date),
                 FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
@@ -306,11 +306,13 @@ async function insertSampleData() {
         const [employees] = await pool.query('SELECT COUNT(*) as count FROM employees');
         if (employees[0].count === 0) {
             const sampleEmployees = [
-                ['EMP001', 'John Doe', 'Michael Doe', '12345-1234567-1', 'john.doe@company.com', '+1234567890', 'IT', 'Software Developer', 'Bachelor in Computer Science', '1990-05-15', '123 Main St, City, Country', 'Jane Reference - HR Manager', '2023-01-15', 75000.00, 'active'],
-                ['EMP002', 'Jane Smith', 'Robert Smith', '23456-2345678-2', 'jane.smith@company.com', '+1234567891', 'HR', 'HR Manager', 'Master in Human Resources', '1985-08-22', '456 Oak Ave, City, Country', null, '2022-06-10', 65000.00, 'active'],
-                ['EMP003', 'Mike Johnson', 'William Johnson', '34567-3456789-3', 'mike.johnson@company.com', '+1234567892', 'Finance', 'Financial Analyst', 'Bachelor in Finance', '1992-12-03', '789 Pine Rd, City, Country', 'John Smith - Finance Director', '2023-03-20', 60000.00, 'active'],
-                ['EMP004', 'Sarah Wilson', 'David Wilson', '45678-4567890-4', 'sarah.wilson@company.com', '+1234567893', 'Marketing', 'Marketing Specialist', 'Bachelor in Marketing', '1988-07-11', '321 Elm St, City, Country', null, '2023-02-01', 55000.00, 'active'],
-                ['EMP005', 'David Brown', 'James Brown', '56789-5678901-5', 'david.brown@company.com', '+1234567894', 'IT', 'System Administrator', 'Bachelor in Information Technology', '1987-04-18', '654 Maple Dr, City, Country', 'Tech Lead - IT Department', '2022-11-15', 70000.00, 'active']
+                ['EMP001', 'Aqeel Ur Rehman', 'AB Chouwdhar', '12345-1234567-1', 'aaqueel@onenetsol.net', '+1234567890', 'IT', 'Software Developer', 'Bachelor in Computer Science', '1990-05-15', '123 Main St, City, Country', 'Jane Reference - HR Manager', '2023-01-15', 75000.00, 'active'],
+                ['EMP002', 'Bilal Aqeel', 'Aqeel Ur Rehman', '23456-2345678-2', 'bilalaaqueel@onenetsol.net', '+1234567891', 'HR', 'HR Manager', 'Master in Human Resources', '1985-08-22', '456 Oak Ave, City, Country', null, '2022-06-10', 65000.00, 'active'],
+                ['EMP003', 'Hamza Ateeq', 'Ateeq Ur Rehman', '34567-3456789-3', 'hamz@onenetsol.net', '+1234567892', 'Finance', 'Financial Analyst', 'Bachelor in Finance', '1992-12-03', '789 Pine Rd, City, Country', 'John Smith - Finance Director', '2023-03-20', 60000.00, 'active'],
+                ['EMP004', 'Saim Mujeeb', 'Mujeeb Ur Rehman', '45678-4567890-4', 'saim@onenetsol.net', '+1234567893', 'Marketing', 'Marketing Specialist', 'Bachelor in Marketing', '1988-07-11', '321 Elm St, City, Country', null, '2023-02-01', 55000.00, 'active'],
+                ['EMP005', 'Ali Aziz', 'Aziz Ur Rehman', '56789-5678901-5', 'aliaziz@onenetsol.net', '+1234567894', 'IT', 'System Administrator', 'Bachelor in Information Technology', '1987-04-18', '654 Maple Dr, City, Country', 'Tech Lead - IT Department', '2022-11-15', 70000.00, 'active'],
+                ['EMP005', 'Faiq Mati', 'Mati Ur Rehman', '56789-5678901-5', 'faiq@onenetsol.net', '+1234567894', 'IT', 'System Administrator', 'Bachelor in Information Technology', '1987-04-18', '654 Maple Dr, City, Country', 'Tech Lead - IT Department', '2022-11-15', 70000.00, 'active']
+
             ];
 
             for (const employee of sampleEmployees) {
@@ -997,6 +999,7 @@ app.post('/api/auth/login', async (req, res) => {
         req.session.user = {
             id: user.id,
             username: user.username,
+            email: user.email,
             role: user.role
         };
         
@@ -1181,13 +1184,24 @@ app.get('/api/attendance/:date', authenticateUser, async (req, res) => {
         const [employees] = await pool.execute(`
             SELECT 
                 e.employee_id,
-                e.name,
+                e.name as employee_name,
                 e.department,
                 e.picture,
-                COALESCE(w.status, 'absent') as status
+                CASE 
+                    WHEN COUNT(w.id) = 0 THEN 'Absent'
+                    WHEN SUM(CASE WHEN w.check_out_time IS NULL THEN 1 ELSE 0 END) > 0 THEN 'Present'
+                    WHEN MAX(w.checkout_reason) = 'Day off' THEN 'Day off'
+                    WHEN MAX(w.checkout_reason) IN ('Lunch', 'Tea', 'Official Work', 'Personal Work') THEN MAX(w.checkout_reason)
+                    ELSE 'Present'
+                END as status,
+                MIN(w.check_in_time) as check_in_time,
+                MAX(w.check_out_time) as check_out_time,
+                COALESCE(MAX(w.checkout_reason), 'N/A') as checkout_reason,
+                SUM(COALESCE(w.hours_worked, 0)) as total_hours_worked
             FROM employees e
-            LEFT JOIN work_records w ON e.employee_id = w.employee_id AND w.date = ?
+            LEFT JOIN work_records w ON UPPER(e.employee_id) = UPPER(w.employee_id) AND w.date = ?
             WHERE e.status = 'active'
+            GROUP BY e.employee_id, e.name, e.department, e.picture
             ORDER BY e.name
         `, [date]);
 
@@ -1267,6 +1281,7 @@ app.post('/api/attendance/bulk', authenticateUser, async (req, res) => {
 });
 
 // Employee self check-in endpoint
+// Employee check-in endpoint
 app.post('/api/employee/checkin', authenticateUser, async (req, res) => {
     try {
         const { employee_code, date } = req.body;
@@ -1293,11 +1308,13 @@ app.post('/api/employee/checkin', authenticateUser, async (req, res) => {
 
         const employee = employees[0];
 
-        // Check if attendance is already marked for today
+        // Check existing records for today
         const [existingRecords] = await pool.execute(`
-            SELECT status, check_in_time, created_at
+            SELECT status, check_in_time, check_out_time, checkout_reason, created_at
             FROM work_records 
             WHERE employee_id = ? AND date = ?
+            ORDER BY created_at DESC
+            LIMIT 1
         `, [employee_code, date]);
 
         const currentTime = new Date().toLocaleTimeString('en-US', { 
@@ -1306,25 +1323,72 @@ app.post('/api/employee/checkin', authenticateUser, async (req, res) => {
             minute: '2-digit' 
         });
 
+        // If there are existing records, check if re-check-in is allowed
         if (existingRecords.length > 0) {
-            const existingRecord = existingRecords[0];
-            const checkinTime = existingRecord.check_in_time || 
-                              existingRecord.created_at.toLocaleTimeString('en-US', { 
-                                  hour12: false, 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                              });
+            const lastRecord = existingRecords[0];
             
+            // Check for day-off restriction FIRST by looking at the most recent checkout record
+            const [checkoutRecords] = await pool.execute(`
+                SELECT checkout_reason, check_out_time
+                FROM work_records 
+                WHERE employee_id = ? AND date = ? AND check_out_time IS NOT NULL
+                ORDER BY created_at DESC
+                LIMIT 1
+            `, [employee_code, date]);
+            
+            if (checkoutRecords.length > 0 && checkoutRecords[0].checkout_reason === 'Day off') {
+                return res.status(400).json({
+                    error: 'Cannot check-in after day-off checkout',
+                    message: 'Employee cannot check-in on the same day after checking out as "Day off". If you want to check-in again for today please contact Administrator please',
+                    employee: employee.name,
+                    lastCheckout: checkoutRecords[0].checkout_reason,
+                    canReCheckIn: false
+                });
+            }
+            
+            // If employee is already checked in (no checkout time), don't allow another check-in
+            if (!lastRecord.check_out_time) {
+                const checkinTime = lastRecord.check_in_time || 
+                                  lastRecord.created_at.toLocaleTimeString('en-US', { 
+                                      hour12: false, 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                  });
+                
+                return res.json({
+                    alreadyCheckedIn: true,
+                    message: 'Employee is already checked in',
+                    employee: employee.name,
+                    checkinTime: checkinTime,
+                    status: lastRecord.status
+                });
+            }
+            
+            // Allow re-check-in for other checkout reasons (Lunch, Tea, etc.)
+            // Create a new work record entry
+            await pool.execute(`
+                INSERT INTO work_records (employee_id, date, status, check_in_time)
+                VALUES (?, ?, 'present', ?)
+            `, [employee_code, date, currentTime]);
+
+            // Get the previous checkout reason for response
+            let previousCheckout = null;
+            if (checkoutRecords.length > 0) {
+                previousCheckout = checkoutRecords[0].checkout_reason;
+            }
+
             return res.json({
-                alreadyCheckedIn: true,
-                message: 'Attendance already marked for today',
+                alreadyCheckedIn: false,
+                reCheckIn: true,
+                message: 'Re-check-in successful',
                 employee: employee.name,
-                checkinTime: checkinTime,
-                status: existingRecord.status
+                checkinTime: currentTime,
+                status: 'present',
+                previousCheckout: previousCheckout
             });
         }
 
-        // Mark attendance as present with check-in time
+        // First check-in of the day
         await pool.execute(`
             INSERT INTO work_records (employee_id, date, status, check_in_time)
             VALUES (?, ?, 'present', ?)
@@ -1332,7 +1396,8 @@ app.post('/api/employee/checkin', authenticateUser, async (req, res) => {
 
         res.json({
             alreadyCheckedIn: false,
-            message: 'Attendance marked successfully',
+            reCheckIn: false,
+            message: 'Check-in successful',
             employee: employee.name,
             checkinTime: currentTime,
             status: 'present'
@@ -1341,6 +1406,164 @@ app.post('/api/employee/checkin', authenticateUser, async (req, res) => {
     } catch (error) {
         console.error('Error in employee check-in:', error);
         res.status(500).json({ error: 'Failed to process check-in' });
+    }
+});
+
+// Employee status check endpoint
+app.get('/api/employee/status/:employee_code', authenticateUser, async (req, res) => {
+    try {
+        const { employee_code } = req.params;
+        const currentDate = new Date().toISOString().split('T')[0];
+        
+        // Find employee by employee_id (employee code)
+        const [employees] = await pool.execute(`
+            SELECT employee_id, name, department, status
+            FROM employees 
+            WHERE employee_id = ? AND status = 'active'
+        `, [employee_code]);
+
+        if (employees.length === 0) {
+            return res.status(404).json({ error: 'Employee not found or inactive' });
+        }
+
+        // Check if employee is already checked in today (get the latest record)
+        const [existingRecords] = await pool.execute(`
+            SELECT status, check_in_time, check_out_time, checkout_reason
+            FROM work_records 
+            WHERE employee_id = ? AND date = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        `, [employee_code, currentDate]);
+
+        let isCheckedIn = false;
+        let checkinTime = null;
+        let checkoutTime = null;
+        let checkoutReason = null;
+
+        if (existingRecords.length > 0) {
+            const record = existingRecords[0];
+            checkinTime = record.check_in_time ? 
+                record.check_in_time.toString().substring(0, 5) : null;
+            checkoutTime = record.check_out_time ? 
+                record.check_out_time.toString().substring(0, 5) : null;
+            checkoutReason = record.checkout_reason;
+            
+            // Employee is checked in if there's a check-in time but no check-out time
+            isCheckedIn = checkinTime && !checkoutTime;
+        }
+
+        res.json({
+            employee: employees[0],
+            isCheckedIn,
+            checkinTime,
+            checkoutTime,
+            checkoutReason
+        });
+
+    } catch (error) {
+        console.error('Error checking employee status:', error);
+        res.status(500).json({ error: 'Failed to check employee status' });
+    }
+});
+
+// Employee check-out endpoint
+app.post('/api/employee/checkout', authenticateUser, async (req, res) => {
+    try {
+        console.log('🔄 [CHECKOUT API] Starting checkout process...');
+        const { employee_code, reason, date } = req.body;
+        console.log('📋 [CHECKOUT API] Request data:', { employee_code, reason, date });
+        
+        if (!employee_code || !reason || !date) {
+            console.log('❌ [CHECKOUT API] Missing required fields');
+            return res.status(400).json({ error: 'Employee code, reason, and date are required' });
+        }
+
+        // Validate date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            console.log('❌ [CHECKOUT API] Invalid date format:', date);
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        console.log('🔍 [CHECKOUT API] Looking up employee:', employee_code);
+        // Find employee by employee_id (employee code)
+        const [employees] = await pool.execute(`
+            SELECT employee_id, name, department, status
+            FROM employees 
+            WHERE employee_id = ? AND status = 'active'
+        `, [employee_code]);
+
+        console.log('📊 [CHECKOUT API] Employee query result:', employees);
+
+        if (employees.length === 0) {
+            console.log('❌ [CHECKOUT API] Employee not found or inactive');
+            return res.status(404).json({ error: 'Employee not found or inactive' });
+        }
+
+        console.log('✅ [CHECKOUT API] Employee found:', employees[0]);
+
+        console.log('🔍 [CHECKOUT API] Checking for active work record...');
+        // Check if employee has an active check-in (no check-out time) for today
+        const [existingRecords] = await pool.execute(`
+            SELECT id, check_in_time, check_out_time
+            FROM work_records 
+            WHERE employee_id = ? AND date = ? AND check_out_time IS NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+        `, [employee_code, date]);
+
+        console.log('📊 [CHECKOUT API] Work records query result:', existingRecords);
+
+        if (existingRecords.length === 0) {
+            console.log('❌ [CHECKOUT API] No active check-in found');
+            return res.status(400).json({ error: 'Employee has not checked in or is already checked out' });
+        }
+
+        const record = existingRecords[0];
+        console.log('✅ [CHECKOUT API] Active record found:', record);
+
+        const currentTime = new Date().toLocaleTimeString('en-US', { 
+            hour12: false, 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        console.log('⏰ [CHECKOUT API] Current time:', currentTime);
+
+        // Calculate hours worked if both check-in and check-out times are available
+        let hoursWorked = null;
+        if (record.check_in_time) {
+            const checkinTime = new Date(`1970-01-01T${record.check_in_time}`);
+            const checkoutTime = new Date(`1970-01-01T${currentTime}:00`);
+            const diffMs = checkoutTime - checkinTime;
+            hoursWorked = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100; // Round to 2 decimal places
+            console.log('📊 [CHECKOUT API] Hours worked calculated:', hoursWorked);
+        }
+
+        console.log('💾 [CHECKOUT API] Updating work record...');
+        // Update the work record with check-out time and reason
+        const updateResult = await pool.execute(`
+            UPDATE work_records 
+            SET check_out_time = ?, checkout_reason = ?, hours_worked = ?
+            WHERE id = ?
+        `, [currentTime, reason, hoursWorked, record.id]);
+
+        console.log('📊 [CHECKOUT API] Update result:', updateResult);
+
+        const responseData = {
+            message: 'Check-out successful',
+            employee: employees[0].name,
+            checkoutTime: currentTime,
+            reason: reason,
+            hoursWorked: hoursWorked,
+            canReCheckIn: reason.toLowerCase() !== 'day off'
+        };
+
+        console.log('✅ [CHECKOUT API] Checkout successful, sending response:', responseData);
+        res.json(responseData);
+
+    } catch (error) {
+        console.error('❌ [CHECKOUT API] Error in employee check-out:', error);
+        console.error('❌ [CHECKOUT API] Error stack:', error.stack);
+        res.status(500).json({ error: 'Failed to process check-out' });
     }
 });
 

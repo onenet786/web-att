@@ -53,7 +53,7 @@ function applyRoleBasedAccess(role) {
 }
 
 function logout() {
-    fetch('/api/auth/logout', {
+    fetch('http://localhost:3000/api/auth/logout', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`

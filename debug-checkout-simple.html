@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Checkout Issue</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { margin: 5px; padding: 10px; }
+        input, select { margin: 5px; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Debug Checkout Issue</h1>
+    
+    <div>
+        <h3>1. Login First</h3>
+        <input type="text" id="username" placeholder="Username" value="admin">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button onclick="login()">Login</button>
+        <div id="login-result" class="result"></div>
+    </div>
+
+    <div>
+        <h3>2. Test Checkout</h3>
+        <input type="text" id="employee-code" placeholder="Employee Code" value="MCS002">
+        <select id="reason">
+            <option value="">Select Reason</option>
+            <option value="End of shift">End of shift</option>
+            <option value="Lunch break">Lunch break</option>
+            <option value="Day off">Day off</option>
+            <option value="Sick leave">Sick leave</option>
+        </select>
+        <button onclick="testCheckout()">Test Checkout</button>
+        <div id="checkout-result" class="result"></div>
+    </div>
+
+    <script>
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = `result ${type}`;
+        }
+
+        async function login() {
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                console.log('🔐 Attempting login with:', { username, password: '***' });
+                
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const result = await response.json();
+                console.log('🔐 Login response:', result);
+                
+                if (response.ok) {
+                    localStorage.setItem('token', result.token);
+                    showResult('login-result', `✅ Login successful! Token saved.`, 'success');
+                } else {
+                    showResult('login-result', `❌ Login failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('🔐 Login error:', error);
+                showResult('login-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCheckout() {
+            try {
+                const employeeCode = document.getElementById('employee-code').value;
+                const reason = document.getElementById('reason').value;
+                const token = localStorage.getItem('token');
+                const date = new Date().toISOString().split('T')[0];
+                
+                console.log('🔍 Testing checkout with parameters:');
+                console.log('  Employee Code:', employeeCode, 'Type:', typeof employeeCode, 'Length:', employeeCode?.length);
+                console.log('  Reason:', reason, 'Type:', typeof reason, 'Length:', reason?.length);
+                console.log('  Date:', date, 'Type:', typeof date, 'Length:', date?.length);
+                console.log('  Token exists:', !!token);
+                
+                // Check for empty values
+                if (!employeeCode) {
+                    showResult('checkout-result', '❌ Employee code is empty!', 'error');
+                    return;
+                }
+                if (!reason) {
+                    showResult('checkout-result', '❌ Reason is empty!', 'error');
+                    return;
+                }
+                if (!date) {
+                    showResult('checkout-result', '❌ Date is empty!', 'error');
+                    return;
+                }
+                if (!token) {
+                    showResult('checkout-result', '❌ No token found! Please login first.', 'error');
+                    return;
+                }
+                
+                const requestData = {
+                    employee_code: employeeCode,
+                    reason: reason,
+                    date: date
+                };
+                
+                console.log('📤 Request data:', requestData);
+                console.log('📤 Request JSON:', JSON.stringify(requestData));
+                
+                showResult('checkout-result', '⏳ Sending checkout request...', 'info');
+                
+                const response = await fetch('http://localhost:3000/api/employee/checkout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', [...response.headers.entries()]);
+                
+                const result = await response.json();
+                console.log('📋 Response data:', result);
+                
+                if (response.ok) {
+                    showResult('checkout-result', `✅ Checkout successful! ${JSON.stringify(result)}`, 'success');
+                } else {
+                    showResult('checkout-result', `❌ Checkout failed: ${result.error || result.message}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('❌ Checkout error:', error);
+                showResult('checkout-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

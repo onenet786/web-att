@@ -646,6 +646,237 @@
             color: #333;
             border: 1px solid #ddd;
         }
+
+        /* Checkout reason button styles */
+        .reason-btn {
+            transition: all 0.3s ease;
+            border: 2px solid #007bff;
+            background-color: white;
+            color: #007bff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 50px;
+        }
+
+        .reason-btn:hover {
+            background-color: #f8f9ff;
+            border-color: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+        }
+
+        .reason-btn.selected {
+            background-color: #007bff;
+            color: white;
+            border-color: #0056b3;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+        }
+
+        .reason-btn.selected:hover {
+            background-color: #0056b3;
+        }
+
+        .reason-btn i {
+            font-size: 16px;
+        }
+
+        .checkout-reason-buttons {
+            margin: 15px 0;
+        }
+
+        #confirm-checkout:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            padding: 20px 25px 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h4 {
+            margin: 0;
+            color: #333;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 20px 25px 25px;
+        }
+
+        .employee-info {
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+            color: #333;
+        }
+
+        .checkout-reason-buttons-modal {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .reason-btn-modal {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            min-height: 120px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .reason-btn-modal:hover {
+            border-color: #007bff;
+            background-color: #f8f9ff;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.15);
+        }
+
+        .reason-btn-modal:active {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
+        }
+
+        .reason-btn-modal i {
+            font-size: 24px;
+            color: #007bff;
+            margin-bottom: 4px;
+        }
+
+        .reason-btn-modal span {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .reason-btn-modal small {
+            color: #666;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        .reason-btn-modal::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: left 0.5s;
+        }
+
+        .reason-btn-modal:hover::before {
+            left: 100%;
+        }
+
+        /* Keyboard shortcut indicator styling */
+        .shortcut-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: #007bff;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .reason-btn-modal:hover .shortcut-indicator {
+            background-color: #0056b3;
+            transform: scale(1.1);
+            box-shadow: 0 3px 6px rgba(0, 123, 255, 0.4);
+        }
+
+        .reason-btn-modal:active .shortcut-indicator {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body>
@@ -663,13 +894,59 @@
 
         <div class="top-row-container">
             <div class="employee-checkin">
-                <h3>Employee Check-In</h3>
+                <h3>Employee Check-In/Out</h3>
                 <div class="checkin-input-group">
                     <label for="employee-code">Enter Employee Code:</label>
                     <input type="text" id="employee-code" placeholder="Enter your employee code and press Enter" maxlength="20">
+                    
                     <div id="checkin-message" class="checkin-message"></div>
                     <div id="checkin-details-container" style="display: none;">
                         <!-- Check-in details table will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Checkout Reason Modal -->
+            <div id="checkout-modal" class="modal-overlay" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4><i class="fas fa-sign-out-alt"></i> Select Checkout Reason</h4>
+                        <button class="modal-close" onclick="closeCheckoutModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="employee-info" id="checkout-employee-info">Checking out: <strong id="checkout-employee-name"></strong></p>
+                        <div class="checkout-reason-buttons-modal">
+                            <button class="reason-btn-modal" data-reason="Day off" data-shortcut="1" onclick="selectCheckoutReason('Day off')">
+                                <div class="shortcut-indicator">1</div>
+                                <i class="fas fa-calendar-day"></i>
+                                <span>Day off</span>
+                                <small>End of work day</small>
+                            </button>
+                            <button class="reason-btn-modal" data-reason="Lunch" data-shortcut="2" onclick="selectCheckoutReason('Lunch')">
+                                <div class="shortcut-indicator">2</div>
+                                <i class="fas fa-utensils"></i>
+                                <span>Lunch</span>
+                                <small>Lunch break</small>
+                            </button>
+                            <button class="reason-btn-modal" data-reason="Tea" data-shortcut="3" onclick="selectCheckoutReason('Tea')">
+                                <div class="shortcut-indicator">3</div>
+                                <i class="fas fa-coffee"></i>
+                                <span>Tea</span>
+                                <small>Tea/Coffee break</small>
+                            </button>
+                            <button class="reason-btn-modal" data-reason="Official Work" data-shortcut="4" onclick="selectCheckoutReason('Official Work')">
+                                <div class="shortcut-indicator">4</div>
+                                <i class="fas fa-briefcase"></i>
+                                <span>Official Work</span>
+                                <small>Business outside office</small>
+                            </button>
+                            <button class="reason-btn-modal" data-reason="Personal Work" data-shortcut="5" onclick="selectCheckoutReason('Personal Work')">
+                                <div class="shortcut-indicator">5</div>
+                                <i class="fas fa-user"></i>
+                                <span>Personal Work</span>
+                                <small>Personal errands</small>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -686,7 +963,7 @@
                 <div class="activity-display" id="recent-activity-display">
                     <div class="activity-item">
                         <div class="activity-photo">
-                            <img src="uploads/default-avatar.png" alt="Employee" id="recent-employee-photo">
+                            <img src="http://localhost:3000/uploads/default-avatar-optimized.svg" alt="Employee" id="recent-employee-photo">
                         </div>
                         <div class="activity-info">
                             <div class="employee-name" id="recent-employee-name">No recent activity</div>
@@ -707,6 +984,7 @@
                     <th>Name</th>
                     <th>Department</th>
                     <th>Current Status</th>
+                    <th>Total Hours</th>
                 </tr>
             </thead>
             <tbody id="attendance-table-body">
@@ -749,6 +1027,42 @@
                     handleEmployeeCheckin();
                 }
             });
+            
+            // Add event listener for modal close when clicking outside
+            document.getElementById('checkout-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeCheckoutModal();
+                }
+            });
+
+            // Add escape key listener to close modal
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && document.getElementById('checkout-modal').style.display === 'flex') {
+                    closeCheckoutModal();
+                }
+                
+                // Handle keyboard shortcuts for checkout reasons (1-5)
+                if (document.getElementById('checkout-modal').style.display === 'flex') {
+                    const keyPressed = e.key;
+                    if (keyPressed >= '1' && keyPressed <= '5') {
+                        e.preventDefault(); // Prevent default behavior
+                        
+                        // Find the button with the matching shortcut
+                        const targetButton = document.querySelector(`[data-shortcut="${keyPressed}"]`);
+                        if (targetButton) {
+                            // Add visual feedback
+                            targetButton.style.transform = 'translateY(-1px) scale(0.98)';
+                            setTimeout(() => {
+                                targetButton.style.transform = '';
+                            }, 150);
+                            
+                            // Get the reason and trigger checkout
+                            const reason = targetButton.getAttribute('data-reason');
+                            selectCheckoutReason(reason);
+                        }
+                    }
+                }
+            });
         });
 
         // Function to update current date and time display
@@ -782,7 +1096,7 @@
         async function loadAttendance(date) {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch(`/api/attendance/${date}`, {
+                const response = await fetch(`http://localhost:3000/api/attendance/${date}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -811,17 +1125,22 @@
                 const statusLabel = getStatusLabel(record.status);
                 
                 // Create photo element
-                const photoUrl = record.picture || '/uploads/default-avatar.png';
-                const photoElement = `<img src="${photoUrl}" alt="${record.name}" class="employee-photo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNTAiIGZpbGw9IiNlOWVjZWYiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjM1IiByPSIxNSIgZmlsbD0iIzZjNzU3ZCIvPjxwYXRoIGQ9Ik0yMCA4MCBRIDI2NSAzNSA2NSBMNjUgNjUgUTgwIDY1IDgwIDgwIEw4MCAxMDAgTDIwIDEwMCBaIiBmaWxsPSIjNmM3NTdkIi8+PC9zdmc+'">`;
+                const photoUrl = record.picture ? `http://localhost:3000/${record.picture}` : 'http://localhost:3000/uploads/default-avatar-optimized.svg';
+                const photoElement = `<img src="${photoUrl}" alt="${record.employee_name}" class="employee-photo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNTAiIGZpbGw9IiNlOWVjZWYiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjM1IiByPSIxNSIgZmlsbD0iIzZjNzU3ZCIvPjxwYXRoIGQ9Ik0yMCA4MCBRIDI2NSAzNSA2NSBMNjUgNjUgUTgwIDY1IDgwIDgwIEw4MCAxMDAgTDIwIDEwMCBaIiBmaWxsPSIjNmM3NTdkIi8+PC9zdmc+'">`;
+                
+                // Format total hours worked
+                const totalHours = record.total_hours_worked ? parseFloat(record.total_hours_worked).toFixed(2) : '0.00';
+                const hoursDisplay = totalHours !== '0.00' ? `${totalHours}h` : '-';
                 
                 row.innerHTML = `
                     <td>${photoElement}</td>
                     <td>${record.employee_id}</td>
-                    <td>${record.name}</td>
+                    <td>${record.employee_name}</td>
                     <td>${record.department}</td>
                     <td>
                         <span class="status-label" data-employee-id="${record.employee_id}" data-status="${record.status}">${statusLabel}</span>
                     </td>
+                    <td class="hours-worked">${hoursDisplay}</td>
                 `;
                 tableBody.appendChild(row);
             });
@@ -868,7 +1187,7 @@
                 const token = localStorage.getItem('token');
                 console.log('Loading recent activity, token:', token ? 'exists' : 'missing');
                 
-                const response = await fetch('/api/attendance/recent-activity', {
+                const response = await fetch('http://localhost:3000/api/attendance/recent-activity', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -907,7 +1226,7 @@
             if (!activityData) {
                 console.log('No activity data, showing default state');
                 // Show default state
-                photoElement.src = 'uploads/default-avatar.png';
+                photoElement.src = 'http://localhost:3000/uploads/default-avatar-optimized.svg';
                 nameElement.textContent = 'No recent activity';
                 designationElement.textContent = '-';
                 statusElement.textContent = '-';
@@ -917,7 +1236,7 @@
 
             console.log('Updating UI with activity data');
             // Update with actual data
-            photoElement.src = activityData.picture || 'uploads/default-avatar.png';
+            photoElement.src = activityData.picture ? `http://localhost:3000/${activityData.picture}` : 'http://localhost:3000/uploads/default-avatar-optimized.svg';
             photoElement.alt = activityData.name || 'Employee';
             nameElement.textContent = activityData.name || 'Unknown Employee';
             designationElement.textContent = activityData.department || 'Unknown Department';
@@ -944,7 +1263,7 @@
             }
         }
         
-        // Handle employee check-in
+        // Handle employee check-in/out
         async function handleEmployeeCheckin() {
             const employeeCode = document.getElementById('employee-code').value.trim();
             const messageDiv = document.getElementById('checkin-message');
@@ -955,10 +1274,43 @@
             }
             
             try {
-                showCheckinMessage('Checking employee code...', 'info');
+                showCheckinMessage('Checking employee status...', 'info');
                 
                 const token = localStorage.getItem('token');
-                const response = await fetch('/api/employee/checkin', {
+                
+                // First, check employee status
+                const statusResponse = await fetch(`http://localhost:3000/api/employee/status/${employeeCode}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const statusResult = await statusResponse.json();
+                
+                if (!statusResponse.ok) {
+                    throw new Error(statusResult.message || 'Employee not found');
+                }
+                
+                if (statusResult.isCheckedIn) {
+                    // Employee is already checked in, show check-out options
+                    showCheckoutOptions(employeeCode, statusResult.checkinTime);
+                } else {
+                    // Employee not checked in, proceed with check-in
+                    await performCheckin(employeeCode);
+                }
+                
+            } catch (error) {
+                console.error('Check-in/out error:', error);
+                showCheckinMessage(error.message || 'Employee not found or operation failed.', 'error');
+            }
+        }
+        
+        // Perform employee check-in
+        async function performCheckin(employeeCode) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('http://localhost:3000/api/employee/checkin', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -973,23 +1325,21 @@
                 const result = await response.json();
                 
                 if (!response.ok) {
+                    // Handle specific day-off restriction error
+                    if (result.error === 'Cannot check-in after day-off checkout') {
+                        throw new Error(`❌ ${result.message || 'Cannot check-in after day-off checkout on the same day'}`);
+                    }
                     throw new Error(result.message || 'Check-in failed');
                 }
                 
-                if (result.alreadyCheckedIn) {
-                    showCheckinMessage(`Already marked attendance! Check-in time: ${result.checkinTime}`, 'info');
-                    // Show existing check-in details in table
-                    showCheckinDetailsTable(employeeCode, result.checkinTime, 'Already Checked In');
-                } else {
-                    showCheckinMessage(`✅ Attendance marked successfully! Check-in time: ${result.checkinTime}`, 'success');
-                    // Show new check-in details in table
-                    showCheckinDetailsTable(employeeCode, result.checkinTime, 'Successfully Checked In');
-                    // Refresh the attendance table to show updated status
-                    const currentDate = new Date().toISOString().split('T')[0];
-                    await loadAttendance(currentDate);
-                    // Update recent activity
-                    await loadRecentActivity();
-                }
+                showCheckinMessage(`✅ Attendance marked successfully! Check-in time: ${result.checkinTime}`, 'success');
+                // Show new check-in details in table
+                showCheckinDetailsTable(employeeCode, result.checkinTime, 'Successfully Checked In');
+                // Refresh the attendance table to show updated status
+                const currentDate = new Date().toISOString().split('T')[0];
+                await loadAttendance(currentDate);
+                // Update recent activity
+                await loadRecentActivity();
                 
                 // Highlight the employee row in the table
                 highlightEmployeeRow(employeeCode);
@@ -998,8 +1348,116 @@
                 document.getElementById('employee-code').value = '';
                 
             } catch (error) {
-                console.error('Check-in error:', error);
-                showCheckinMessage(error.message || 'Employee not found or check-in failed.', 'error');
+                throw error;
+            }
+        }
+        
+        // Show check-out options in modal
+        function showCheckoutOptions(employeeCode, checkinTime) {
+            // Store employee code for checkout
+            window.currentCheckoutEmployee = employeeCode;
+            
+            // Set employee name in modal (you can enhance this to show actual name)
+            document.getElementById('checkout-employee-name').textContent = `Employee ${employeeCode}`;
+            
+            // Show the modal
+            document.getElementById('checkout-modal').style.display = 'flex';
+            
+            // Clear the input field
+            document.getElementById('employee-code').value = '';
+        }
+
+        // Close checkout modal
+        function closeCheckoutModal() {
+            document.getElementById('checkout-modal').style.display = 'none';
+            window.currentCheckoutEmployee = null;
+        }
+
+        // Select checkout reason and automatically perform checkout
+        async function selectCheckoutReason(reason) {
+            console.log('🎯 selectCheckoutReason called with reason:', reason);
+            console.log('🎯 window.currentCheckoutEmployee:', window.currentCheckoutEmployee);
+            
+            if (!window.currentCheckoutEmployee) {
+                showCheckinMessage('❌ No employee selected for checkout', 'error');
+                return;
+            }
+
+            // Store employee code before closing modal
+            const employeeCode = window.currentCheckoutEmployee;
+            
+            // Close modal immediately
+            closeCheckoutModal();
+            
+            // Show loading message
+            showCheckinMessage('⏳ Processing checkout...', 'info');
+            
+            // Perform checkout with stored employee code
+            await performCheckout(employeeCode, reason);
+        }
+        
+        // Perform employee check-out
+        async function performCheckout(employeeCode, reason) {
+            console.log('🔄 Starting checkout process...');
+            console.log('📋 Employee Code:', employeeCode, 'Type:', typeof employeeCode, 'Is null/undefined:', employeeCode == null);
+            console.log('📋 Reason:', reason, 'Type:', typeof reason, 'Is null/undefined:', reason == null);
+            
+            try {
+                const token = localStorage.getItem('token');
+                console.log('🔑 Token retrieved:', token ? 'Token exists' : 'No token found');
+                
+                const requestData = { 
+                    employee_code: employeeCode,
+                    reason: reason,
+                    date: new Date().toISOString().split('T')[0]
+                };
+                console.log('📤 Request data:', requestData);
+                
+                const response = await fetch('http://localhost:3000/api/employee/checkout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response ok:', response.ok);
+                
+                const result = await response.json();
+                console.log('📋 Response data:', result);
+                
+                if (!response.ok) {
+                    console.error('❌ Checkout failed:', result.error || result.message || 'Check-out failed');
+                    throw new Error(result.error || result.message || 'Check-out failed');
+                }
+                
+                console.log('✅ Checkout successful!');
+                let message = `✅ Check-out successful! Reason: ${reason}. Check-out time: ${result.checkoutTime}`;
+                
+                // If employee can re-check-in, show additional message
+                if (result.canReCheckIn) {
+                    message += ` (You can check-in again later)`;
+                }
+                
+                showCheckinMessage(message, 'success');
+                
+                // Refresh the attendance table to show updated status
+                const currentDate = new Date().toISOString().split('T')[0];
+                await loadAttendance(currentDate);
+                // Update recent activity
+                await loadRecentActivity();
+                
+                // Highlight the employee row in the table
+                highlightEmployeeRow(employeeCode);
+                
+                // Clear stored employee code
+                window.currentCheckoutEmployee = null;
+                
+            } catch (error) {
+                console.error('❌ Checkout error:', error);
+                showCheckinMessage(error.message || 'Check-out failed.', 'error');
             }
         }
         
@@ -1103,7 +1561,7 @@
         
         // Logout function
         function logout() {
-            fetch('/api/auth/logout', {
+            fetch('http://localhost:3000/api/auth/logout', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { margin: 5px; padding: 10px 15px; }
+        input { margin: 5px; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Checkout Debug Test</h1>
+    
+    <div>
+        <h3>1. Check Authentication</h3>
+        <button onclick="checkAuth()">Check Token</button>
+        <div id="auth-result" class="result"></div>
+    </div>
+    
+    <div>
+        <h3>2. Login (if needed)</h3>
+        <input type="text" id="username" placeholder="Username" value="admin">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button onclick="login()">Login</button>
+        <div id="login-result" class="result"></div>
+    </div>
+    
+    <div>
+        <h3>3. Check Employee Status</h3>
+        <input type="text" id="employee-code" placeholder="Employee Code" value="MCS002">
+        <button onclick="checkEmployeeStatus()">Check Status</button>
+        <div id="status-result" class="result"></div>
+    </div>
+    
+    <div>
+        <h3>4. Test Checkout</h3>
+        <input type="text" id="checkout-employee" placeholder="Employee Code" value="MCS002">
+        <input type="text" id="checkout-reason" placeholder="Reason" value="Day off">
+        <button onclick="testCheckout()">Test Checkout</button>
+        <div id="checkout-result" class="result"></div>
+    </div>
+
+    <script>
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `result ${type}`;
+        }
+
+        async function login() {
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('token', result.token);
+                    showResult('login-result', `✅ Login successful! Token saved.`, 'success');
+                } else {
+                    showResult('login-result', `❌ Login failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('login-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showResult('auth-result', '❌ No token found in localStorage', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult('auth-result', `✅ Token valid. User: ${result.username} (${result.role})`, 'success');
+                } else {
+                    showResult('auth-result', `❌ Token invalid: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('auth-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkEmployeeStatus() {
+            const employeeCode = document.getElementById('employee-code').value;
+            const token = localStorage.getItem('token');
+            
+            try {
+                const response = await fetch(`http://localhost:3000/api/employee/status/${employeeCode}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult('status-result', `✅ Status: ${JSON.stringify(result, null, 2)}`, 'success');
+                } else {
+                    showResult('status-result', `❌ Status check failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('status-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCheckout() {
+            const employeeCode = document.getElementById('checkout-employee').value;
+            const reason = document.getElementById('checkout-reason').value;
+            const token = localStorage.getItem('token');
+            
+            console.log('🔍 Testing checkout with:', { employeeCode, reason, token: token ? 'exists' : 'missing' });
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/employee/checkout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ 
+                        employee_code: employeeCode,
+                        reason: reason,
+                        date: new Date().toISOString().split('T')[0]
+                    })
+                });
+                
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', [...response.headers.entries()]);
+                
+                const result = await response.json();
+                console.log('📋 Response data:', result);
+                
+                if (response.ok) {
+                    showResult('checkout-result', `✅ Checkout successful! ${JSON.stringify(result, null, 2)}`, 'success');
+                } else {
+                    showResult('checkout-result', `❌ Checkout failed: ${result.error || result.message}`, 'error');
+                }
+            } catch (error) {
+                console.error('❌ Checkout error:', error);
+                showResult('checkout-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-check auth on page load
+        window.onload = function() {
+            checkAuth();
+        };
+    </script>
+</body>
+</html>

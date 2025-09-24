@@ -1,0 +1,28 @@
+directories:
+  output: dist
+  buildResources: build
+appId: com.company.attendance-system
+productName: Employee Attendance System
+files:
+  - filter:
+      - main.js
+      - preload.js
+      - attendance.html
+      - login.html
+      - index.html
+      - script.js
+      - styles.css
+      - server.js
+      - init-database.js
+      - package.json
+      - assets/**/*
+      - uploads/**/*
+      - node_modules/**/*
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+electronVersion: 38.1.2

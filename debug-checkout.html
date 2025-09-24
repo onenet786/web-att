@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Checkout API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 10px; padding: 10px; border-radius: 3px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        input, select { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Checkout API Debug Tool</h1>
+        
+        <div class="section">
+            <h3>1. Authentication</h3>
+            <input type="text" id="username" placeholder="Username (admin)" value="admin" />
+            <input type="password" id="password" placeholder="Password (admin123)" value="admin123" />
+            <button onclick="login()">Login</button>
+            <button onclick="checkAuth()">Check Token</button>
+            <div id="auth-result"></div>
+        </div>
+
+        <div class="section">
+            <h3>2. Get Employee List</h3>
+            <button onclick="getEmployees()">Load Employees</button>
+            <div id="employees-result"></div>
+        </div>
+
+        <div class="section">
+            <h3>3. Check Employee Status</h3>
+            <input type="text" id="employee-code" placeholder="Employee Code (e.g., MCS001)" />
+            <button onclick="checkEmployeeStatus()">Check Status</button>
+            <div id="status-result"></div>
+        </div>
+
+        <div class="section">
+            <h3>4. Test Checkout</h3>
+            <input type="text" id="checkout-employee-code" placeholder="Employee Code" />
+            <select id="checkout-reason">
+                <option value="Day off">Day off</option>
+                <option value="Lunch">Lunch</option>
+                <option value="Tea">Tea</option>
+                <option value="Official Work">Official Work</option>
+                <option value="Personal Work">Personal Work</option>
+            </select>
+            <button onclick="testCheckout()">Test Checkout</button>
+            <div id="checkout-result"></div>
+        </div>
+
+        <div class="section">
+            <h3>5. View Today's Attendance</h3>
+            <button onclick="getTodayAttendance()">Load Today's Records</button>
+            <div id="attendance-result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+
+        async function login() {
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('token', result.token);
+                    showResult('auth-result', `✅ Login successful! Token saved.`, 'success');
+                } else {
+                    showResult('auth-result', `❌ Login failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('auth-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkAuth() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    showResult('auth-result', '❌ No token found in localStorage', 'error');
+                    return;
+                }
+                
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult('auth-result', `✅ Token valid. User: ${result.username} (${result.role})`, 'success');
+                } else {
+                    showResult('auth-result', `❌ Token invalid: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('auth-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getEmployees() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/employees`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const employeeList = result.map(emp => 
+                        `${emp.employee_id} - ${emp.name} (${emp.status})`
+                    ).join('<br>');
+                    showResult('employees-result', `✅ Found ${result.length} employees:<br><pre>${employeeList}</pre>`, 'success');
+                } else {
+                    showResult('employees-result', `❌ Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('employees-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkEmployeeStatus() {
+            try {
+                const employeeCode = document.getElementById('employee-code').value;
+                if (!employeeCode) {
+                    showResult('status-result', '❌ Please enter employee code', 'error');
+                    return;
+                }
+
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/employee/status/${employeeCode}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const status = result.isCheckedIn ? 'Checked In' : 
+                                  (result.checkoutTime ? 'Checked Out' : 'Not Checked In');
+                    const statusInfo = `
+                        Employee: ${result.employee.name}<br>
+                        Status: ${status}<br>
+                        Check-in Time: ${result.checkinTime || 'Not checked in'}<br>
+                        Check-out Time: ${result.checkoutTime || 'Not checked out'}
+                    `;
+                    showResult('status-result', `✅ Employee Status:<br>${statusInfo}`, 'success');
+                } else {
+                    showResult('status-result', `❌ Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('status-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCheckout() {
+            try {
+                const employeeCode = document.getElementById('checkout-employee-code').value;
+                const reason = document.getElementById('checkout-reason').value;
+                
+                if (!employeeCode) {
+                    showResult('checkout-result', '❌ Please enter employee code', 'error');
+                    return;
+                }
+
+                const token = localStorage.getItem('token');
+                const today = new Date().toISOString().split('T')[0];
+                
+                showResult('checkout-result', '⏳ Processing checkout...', 'info');
+                
+                const response = await fetch(`${API_BASE}/employee/checkout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        employee_code: employeeCode,
+                        reason: reason,
+                        date: today
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const successInfo = `
+                        ✅ Checkout successful!<br>
+                        Employee: ${result.employee}<br>
+                        Time: ${result.checkoutTime}<br>
+                        Reason: ${result.reason}<br>
+                        Hours Worked: ${result.hoursWorked || 'N/A'}
+                    `;
+                    showResult('checkout-result', successInfo, 'success');
+                } else {
+                    showResult('checkout-result', `❌ Checkout failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('checkout-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getTodayAttendance() {
+            try {
+                const token = localStorage.getItem('token');
+                const today = new Date().toISOString().split('T')[0];
+                
+                const response = await fetch(`${API_BASE}/attendance/${today}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const attendanceList = result.map(record => 
+                        `${record.employee_id} - ${record.employee_name}: Status: ${record.status}, In: ${record.check_in_time || 'N/A'}, Out: ${record.check_out_time || 'N/A'}`
+                    ).join('<br>');
+                    showResult('attendance-result', `✅ Today's Attendance (${result.length} records):<br><pre>${attendanceList}</pre>`, 'success');
+                } else {
+                    showResult('attendance-result', `❌ Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('attendance-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-check auth on page load
+        window.onload = function() {
+            checkAuth();
+        };
+    </script>
+</body>
+</html>
