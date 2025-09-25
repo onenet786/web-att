@@ -77,3 +77,25 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Build and distribution files
+dist/
+build/
+*.exe
+*.blockmap
+*.yml
+*.yaml
+
+# Backup files
+backups/
+*.sql
+
+# Upload files (optional - remove if you want to include uploads)
+uploads/
+
+# MySQL/Database related
+mysql-data/
+*.dump
+
+# Windows specific
+*.lnk

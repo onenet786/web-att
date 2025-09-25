@@ -306,13 +306,11 @@ async function insertSampleData() {
         const [employees] = await pool.query('SELECT COUNT(*) as count FROM employees');
         if (employees[0].count === 0) {
             const sampleEmployees = [
-                ['EMP001', 'Aqeel Ur Rehman', 'AB Chouwdhar', '12345-1234567-1', 'aaqueel@onenetsol.net', '+1234567890', 'IT', 'Software Developer', 'Bachelor in Computer Science', '1990-05-15', '123 Main St, City, Country', 'Jane Reference - HR Manager', '2023-01-15', 75000.00, 'active'],
-                ['EMP002', 'Bilal Aqeel', 'Aqeel Ur Rehman', '23456-2345678-2', 'bilalaaqueel@onenetsol.net', '+1234567891', 'HR', 'HR Manager', 'Master in Human Resources', '1985-08-22', '456 Oak Ave, City, Country', null, '2022-06-10', 65000.00, 'active'],
-                ['EMP003', 'Hamza Ateeq', 'Ateeq Ur Rehman', '34567-3456789-3', 'hamz@onenetsol.net', '+1234567892', 'Finance', 'Financial Analyst', 'Bachelor in Finance', '1992-12-03', '789 Pine Rd, City, Country', 'John Smith - Finance Director', '2023-03-20', 60000.00, 'active'],
-                ['EMP004', 'Saim Mujeeb', 'Mujeeb Ur Rehman', '45678-4567890-4', 'saim@onenetsol.net', '+1234567893', 'Marketing', 'Marketing Specialist', 'Bachelor in Marketing', '1988-07-11', '321 Elm St, City, Country', null, '2023-02-01', 55000.00, 'active'],
-                ['EMP005', 'Ali Aziz', 'Aziz Ur Rehman', '56789-5678901-5', 'aliaziz@onenetsol.net', '+1234567894', 'IT', 'System Administrator', 'Bachelor in Information Technology', '1987-04-18', '654 Maple Dr, City, Country', 'Tech Lead - IT Department', '2022-11-15', 70000.00, 'active'],
-                ['EMP005', 'Faiq Mati', 'Mati Ur Rehman', '56789-5678901-5', 'faiq@onenetsol.net', '+1234567894', 'IT', 'System Administrator', 'Bachelor in Information Technology', '1987-04-18', '654 Maple Dr, City, Country', 'Tech Lead - IT Department', '2022-11-15', 70000.00, 'active']
-
+                ['EMP001', 'John Doe', 'Michael Doe', '12345-1234567-1', 'john.doe@company.com', '+1234567890', 'IT', 'Software Developer', 'Bachelor in Computer Science', '1990-05-15', '123 Main St, City, Country', 'Jane Reference - HR Manager', '2023-01-15', 75000.00, 'active'],
+                ['EMP002', 'Jane Smith', 'Robert Smith', '23456-2345678-2', 'jane.smith@company.com', '+1234567891', 'HR', 'HR Manager', 'Master in Human Resources', '1985-08-22', '456 Oak Ave, City, Country', null, '2022-06-10', 65000.00, 'active'],
+                ['EMP003', 'Mike Johnson', 'William Johnson', '34567-3456789-3', 'mike.johnson@company.com', '+1234567892', 'Finance', 'Financial Analyst', 'Bachelor in Finance', '1992-12-03', '789 Pine Rd, City, Country', 'John Smith - Finance Director', '2023-03-20', 60000.00, 'active'],
+                ['EMP004', 'Sarah Wilson', 'David Wilson', '45678-4567890-4', 'sarah.wilson@company.com', '+1234567893', 'Marketing', 'Marketing Specialist', 'Bachelor in Marketing', '1988-07-11', '321 Elm St, City, Country', null, '2023-02-01', 55000.00, 'active'],
+                ['EMP005', 'David Brown', 'James Brown', '56789-5678901-5', 'david.brown@company.com', '+1234567894', 'IT', 'System Administrator', 'Bachelor in Information Technology', '1987-04-18', '654 Maple Dr, City, Country', 'Tech Lead - IT Department', '2022-11-15', 70000.00, 'active']
             ];
 
             for (const employee of sampleEmployees) {
@@ -345,7 +343,10 @@ app.get('/api/employees', async (req, res) => {
 // Get next available employee ID
 app.get('/api/employees/next-id', async (req, res) => {
     try {
-        // Get the highest employee ID number
+        // Use MCS prefix to match existing company records
+        const DEFAULT_PREFIX = 'MCS';
+        
+        // Get the highest employee ID number with the current prefix
         const [rows] = await pool.execute(`
             SELECT employee_id 
             FROM employees 
@@ -356,8 +357,8 @@ app.get('/api/employees/next-id', async (req, res) => {
         
         let nextId;
         if (rows.length === 0) {
-            // No employees exist, start with EMP001
-            nextId = 'EMP001';
+            // No employees exist, start with default prefix + 001
+            nextId = DEFAULT_PREFIX + '001';
         } else {
             // Extract the numeric part and increment
             const lastId = rows[0].employee_id;
@@ -368,11 +369,14 @@ app.get('/api/employees/next-id', async (req, res) => {
                 nextId = prefix + number.toString().padStart(3, '0');
             } else {
                 // Fallback if format doesn't match
-                nextId = 'EMP001';
+                nextId = DEFAULT_PREFIX + '001';
             }
         }
         
-        res.json({ nextId: nextId });
+        res.json({ 
+            nextId: nextId,
+            prefix: nextId.match(/^([A-Z]+)/)[1] // Return the prefix for frontend use
+        });
     } catch (error) {
         console.error('Error generating next employee ID:', error);
         res.status(500).json({ error: 'Failed to generate next employee ID' });
@@ -1097,6 +1101,7 @@ app.get('/api/attendance/recent-activity', authenticateUser, async (req, res) =>
                 wr.date,
                 wr.check_in_time,
                 wr.check_out_time,
+                wr.checkout_reason,
                 wr.created_at,
                 wr.updated_at,
                 e.name,
@@ -1124,26 +1129,40 @@ app.get('/api/attendance/recent-activity', authenticateUser, async (req, res) =>
         // Determine if this was a check-in or check-out based on timestamps
         let action = 'checkin';
         let timestamp = activity.check_in_time;
+        let actionDescription = 'Checked In';
+        
+        // Format the date properly for comparison
+        const dateStr = activity.date instanceof Date ? 
+            activity.date.toISOString().split('T')[0] : 
+            activity.date;
         
         // If there's a check-out time and it's more recent than check-in, it's a checkout
         if (activity.check_out_time && activity.check_in_time) {
-            const checkinDateTime = new Date(`${activity.date} ${activity.check_in_time}`);
-            const checkoutDateTime = new Date(`${activity.date} ${activity.check_out_time}`);
+            const checkinDateTime = new Date(`${dateStr} ${activity.check_in_time}`);
+            const checkoutDateTime = new Date(`${dateStr} ${activity.check_out_time}`);
             
-            if (checkoutDateTime > checkinDateTime) {
+            // If checkout time >= checkin time, it's a checkout (handles same time case)
+            if (checkoutDateTime >= checkinDateTime) {
                 action = 'checkout';
                 timestamp = activity.check_out_time;
+                actionDescription = activity.checkout_reason ? 
+                    `Checked Out (${activity.checkout_reason})` : 'Checked Out';
             }
         } else if (activity.check_out_time && !activity.check_in_time) {
             action = 'checkout';
             timestamp = activity.check_out_time;
+            actionDescription = activity.checkout_reason ? 
+                `Checked Out (${activity.checkout_reason})` : 'Checked Out';
         }
 
         // Create full timestamp for the activity - only if timestamp is not null
         let activityTimestamp = null;
         if (timestamp) {
             try {
-                activityTimestamp = new Date(`${activity.date} ${timestamp}`);
+                const dateStr = activity.date instanceof Date ? 
+                    activity.date.toISOString().split('T')[0] : 
+                    activity.date;
+                activityTimestamp = new Date(`${dateStr} ${timestamp}`);
                 // Validate the date is valid
                 if (isNaN(activityTimestamp.getTime())) {
                     activityTimestamp = null;
@@ -1160,6 +1179,7 @@ app.get('/api/attendance/recent-activity', authenticateUser, async (req, res) =>
             department: activity.department,
             picture: activity.picture,
             action: action,
+            actionDescription: actionDescription,
             timestamp: activityTimestamp ? activityTimestamp.toISOString() : null,
             date: activity.date
         });
@@ -1190,20 +1210,35 @@ app.get('/api/attendance/:date', authenticateUser, async (req, res) => {
                 CASE 
                     WHEN COUNT(w.id) = 0 THEN 'Absent'
                     WHEN SUM(CASE WHEN w.check_out_time IS NULL THEN 1 ELSE 0 END) > 0 THEN 'Present'
-                    WHEN MAX(w.checkout_reason) = 'Day off' THEN 'Day off'
-                    WHEN MAX(w.checkout_reason) IN ('Lunch', 'Tea', 'Official Work', 'Personal Work') THEN MAX(w.checkout_reason)
+                    WHEN latest_record.checkout_reason = 'Day off' THEN 'Day off'
+                    WHEN latest_record.checkout_reason IN ('Lunch', 'Tea', 'Official Work', 'Personal Work') THEN 
+                        CONCAT('Checked Out (', latest_record.checkout_reason, ')')
+                    WHEN latest_record.check_out_time IS NOT NULL AND latest_record.checkout_reason IS NOT NULL THEN 
+                        CONCAT('Checked Out (', latest_record.checkout_reason, ')')
+                    WHEN latest_record.check_out_time IS NOT NULL THEN 'Checked Out'
                     ELSE 'Present'
                 END as status,
                 MIN(w.check_in_time) as check_in_time,
-                MAX(w.check_out_time) as check_out_time,
-                COALESCE(MAX(w.checkout_reason), 'N/A') as checkout_reason,
+                latest_record.check_out_time as check_out_time,
+                COALESCE(latest_record.checkout_reason, 'N/A') as checkout_reason,
                 SUM(COALESCE(w.hours_worked, 0)) as total_hours_worked
             FROM employees e
             LEFT JOIN work_records w ON UPPER(e.employee_id) = UPPER(w.employee_id) AND w.date = ?
+            LEFT JOIN (
+                SELECT 
+                    employee_id,
+                    check_out_time,
+                    checkout_reason,
+                    ROW_NUMBER() OVER (PARTITION BY employee_id ORDER BY 
+                        CASE WHEN check_out_time IS NOT NULL THEN check_out_time ELSE check_in_time END DESC
+                    ) as rn
+                FROM work_records 
+                WHERE date = ?
+            ) latest_record ON UPPER(e.employee_id) = UPPER(latest_record.employee_id) AND latest_record.rn = 1
             WHERE e.status = 'active'
-            GROUP BY e.employee_id, e.name, e.department, e.picture
+            GROUP BY e.employee_id, e.name, e.department, e.picture, latest_record.check_out_time, latest_record.checkout_reason
             ORDER BY e.name
-        `, [date]);
+        `, [date, date]);
 
         res.json(employees);
     } catch (error) {
@@ -1463,6 +1498,101 @@ app.get('/api/employee/status/:employee_code', authenticateUser, async (req, res
     } catch (error) {
         console.error('Error checking employee status:', error);
         res.status(500).json({ error: 'Failed to check employee status' });
+    }
+});
+
+// Get employee history
+app.get('/api/employee/history/:employeeId', authenticateUser, async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const { date, limit = 30 } = req.query; // Default to last 30 records
+        
+        // Get employee basic info
+        const [employeeInfo] = await pool.execute(`
+            SELECT employee_id, name, department, position, picture
+            FROM employees 
+            WHERE employee_id = ? AND status = 'active'
+        `, [employeeId]);
+        
+        if (employeeInfo.length === 0) {
+            return res.status(404).json({ error: 'Employee not found' });
+        }
+        
+        // Build the query based on whether a specific date is requested
+        let query = `
+            SELECT 
+                date,
+                check_in_time,
+                check_out_time,
+                checkout_reason,
+                hours_worked,
+                created_at,
+                updated_at
+            FROM work_records 
+            WHERE employee_id = ?`;
+        
+        let queryParams = [employeeId];
+        
+        if (date) {
+            // If specific date is provided, filter by that date
+            query += ` AND date = ?`;
+            queryParams.push(date);
+        } else {
+            // If no date provided, show only current day
+            query += ` AND date = CURDATE()`;
+        }
+        
+        query += ` ORDER BY date DESC, check_in_time DESC`;
+        
+        // Only add limit if no specific date is requested (for historical view)
+        if (!date) {
+            query += ` LIMIT ?`;
+            queryParams.push(parseInt(limit));
+        }
+        
+        // Get employee work history
+        const [workHistory] = await pool.execute(query, queryParams);
+        
+        // Format the history data
+        const formattedHistory = workHistory.map(record => {
+            let status = 'Absent';
+            let statusClass = 'absent';
+            
+            if (record.check_in_time) {
+                if (record.check_out_time) {
+                    if (record.checkout_reason) {
+                        status = `Checked Out (${record.checkout_reason})`;
+                        statusClass = 'checked-out';
+                    } else {
+                        status = 'Checked Out';
+                        statusClass = 'checked-out';
+                    }
+                } else {
+                    status = 'Present';
+                    statusClass = 'present';
+                }
+            }
+            
+            return {
+                date: record.date,
+                check_in_time: record.check_in_time,
+                check_out_time: record.check_out_time,
+                checkout_reason: record.checkout_reason,
+                total_hours_worked: record.hours_worked ? parseFloat(record.hours_worked).toFixed(2) : '0.00',
+                status: status,
+                statusClass: statusClass
+            };
+        });
+        
+        res.json({
+            employee: employeeInfo[0],
+            history: formattedHistory,
+            totalRecords: formattedHistory.length
+        });
+        
+    } catch (error) {
+        console.error('Error fetching employee history:', error);
+        res.status(500).json({ error: 'Failed to fetch employee history' });
     }
 });
 

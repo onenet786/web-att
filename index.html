@@ -5,10 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Management System</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="themes.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
+    <!-- Theme Switcher -->
+    <div class="theme-switcher">
+        <button class="theme-toggle" onclick="toggleThemeDropdown()">🎨</button>
+        <div class="theme-dropdown" id="themeDropdown">
+            <div class="theme-option" onclick="setTheme('standard')">Standard</div>
+            <div class="theme-option" onclick="setTheme('aesthetic')">Aesthetic</div>
+            <div class="theme-option" onclick="setTheme('light-moon')">Light Moon</div>
+            <div class="theme-option" onclick="setTheme('dark-moon')">Dark Moon</div>
+            <div class="theme-option" onclick="setTheme('ocean-breeze')">Ocean Breeze</div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <header class="header">
@@ -484,5 +497,47 @@
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Theme Management Functions
+        function toggleThemeDropdown() {
+            const dropdown = document.getElementById('themeDropdown');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function setTheme(themeName) {
+            // Remove all theme classes
+            document.body.classList.remove('theme-standard', 'theme-aesthetic', 'theme-light-moon', 'theme-dark-moon', 'theme-ocean-breeze');
+            
+            // Add the selected theme class
+            document.body.classList.add(`theme-${themeName}`);
+            
+            // Save theme preference
+            localStorage.setItem('selectedTheme', themeName);
+            
+            // Close dropdown
+            document.getElementById('themeDropdown').style.display = 'none';
+        }
+
+        // Load saved theme on page load
+        function loadSavedTheme() {
+            const savedTheme = localStorage.getItem('selectedTheme') || 'standard';
+            setTheme(savedTheme);
+        }
+
+        // Close theme dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const themeSwitcher = document.querySelector('.theme-switcher');
+            const dropdown = document.getElementById('themeDropdown');
+            
+            if (!themeSwitcher.contains(event.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Initialize theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSavedTheme();
+        });
+    </script>
 </body>
 </html>

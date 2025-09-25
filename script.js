@@ -950,12 +950,19 @@ async function generateEmployeeId() {
     try {
         const response = await apiCall('/employees/next-id');
         const nextId = response.nextId;
+        const prefix = response.prefix || 'EMP'; // Get prefix from server response
+        
         document.getElementById('employeeId').value = nextId;
+        
+        // Store the prefix for use in other functions if needed
+        window.employeePrefix = prefix;
+        
     } catch (error) {
         console.error('Error generating employee ID:', error);
         // Fallback to current timestamp if API fails
         const fallbackId = 'EMP' + Date.now().toString().slice(-6);
         document.getElementById('employeeId').value = fallbackId;
+        window.employeePrefix = 'EMP';
     }
 }
 

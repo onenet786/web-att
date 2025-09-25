@@ -1,6 +1,6 @@
-# Employee Management System
+# ONENET-ATT - Employee Attendance System
 
-A modern, web-based employee management system with MySQL database integration. Built with Node.js, Express, and a beautiful responsive frontend. This system allows you to manage employees and track their work records with real-time data persistence.
+A comprehensive web-based employee attendance management system with modern UI themes and real-time tracking capabilities.
 
 ## Features
 

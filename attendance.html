@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendance Management - Employee System</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="themes.css">
     <style>
         .attendance-container {
             max-width: 1200px;
@@ -880,6 +881,18 @@
     </style>
 </head>
 <body>
+    <!-- Theme Switcher -->
+    <div class="theme-switcher">
+        <button class="theme-toggle" onclick="toggleThemeDropdown()">🎨</button>
+        <div class="theme-dropdown" id="themeDropdown">
+            <div class="theme-option" onclick="setTheme('standard')">Standard</div>
+            <div class="theme-option" onclick="setTheme('aesthetic')">Aesthetic</div>
+            <div class="theme-option" onclick="setTheme('light-moon')">Light Moon</div>
+            <div class="theme-option" onclick="setTheme('dark-moon')">Dark Moon</div>
+            <div class="theme-option" onclick="setTheme('ocean-breeze')">Ocean Breeze</div>
+        </div>
+    </div>
+
     <div class="attendance-container">
         <div class="header">
             <h1>Attendance Management</h1>
@@ -1028,6 +1041,71 @@
                 }
             });
             
+            // Add automatic alphabet prefix functionality
+            const employeeCodeInput = document.getElementById('employee-code');
+            const DEFAULT_PREFIX = 'MCS'; // Use MCS prefix to match company records
+            
+            // Auto-add prefix when user starts typing
+            employeeCodeInput.addEventListener('input', function(e) {
+                let value = e.target.value.toUpperCase();
+                
+                // If user cleared the field, don't add prefix
+                if (value === '') {
+                    return;
+                }
+                
+                // If value doesn't start with letters, add the default prefix
+                if (!/^[A-Z]/.test(value)) {
+                    e.target.value = DEFAULT_PREFIX + value;
+                    return;
+                }
+                
+                // If value starts with letters but doesn't have the expected format
+                const match = value.match(/^([A-Z]+)(.*)$/);
+                if (match) {
+                    const prefix = match[1];
+                    const rest = match[2];
+                    
+                    // Ensure the rest contains only numbers or is empty
+                    if (rest && !/^\d*$/.test(rest)) {
+                        // Remove non-numeric characters from the rest
+                        const cleanRest = rest.replace(/[^0-9]/g, '');
+                        e.target.value = prefix + cleanRest;
+                    } else {
+                        e.target.value = value;
+                    }
+                }
+            });
+            
+            // Auto-focus and add prefix when field is focused
+            employeeCodeInput.addEventListener('focus', function(e) {
+                if (e.target.value === '') {
+                    e.target.value = DEFAULT_PREFIX;
+                    // Set cursor position after the prefix
+                    setTimeout(() => {
+                        e.target.setSelectionRange(DEFAULT_PREFIX.length, DEFAULT_PREFIX.length);
+                    }, 0);
+                }
+            });
+            
+            // Handle backspace to prevent deleting the prefix completely
+            employeeCodeInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace') {
+                    const value = e.target.value;
+                    const cursorPos = e.target.selectionStart;
+                    
+                    // If cursor is at or before the end of the prefix, prevent deletion
+                    if (cursorPos <= DEFAULT_PREFIX.length && value.startsWith(DEFAULT_PREFIX)) {
+                        if (cursorPos === DEFAULT_PREFIX.length && value.length === DEFAULT_PREFIX.length) {
+                            // Allow clearing if only prefix remains
+                            return;
+                        }
+                        e.preventDefault();
+                        e.target.setSelectionRange(DEFAULT_PREFIX.length, DEFAULT_PREFIX.length);
+                    }
+                }
+            });
+            
             // Add event listener for modal close when clicking outside
             document.getElementById('checkout-modal').addEventListener('click', function(e) {
                 if (e.target === this) {
@@ -1134,7 +1212,7 @@
                 
                 row.innerHTML = `
                     <td>${photoElement}</td>
-                    <td>${record.employee_id}</td>
+                    <td><span class="employee-id-link" onclick="showEmployeeHistory('${record.employee_id}')" style="cursor: pointer; color: #007bff; text-decoration: underline;">${record.employee_id}</span></td>
                     <td>${record.employee_name}</td>
                     <td>${record.department}</td>
                     <td>
@@ -1242,7 +1320,7 @@
             designationElement.textContent = activityData.department || 'Unknown Department';
             
             // Format status
-            const statusText = activityData.action === 'checkin' ? 'Checked In' : 'Checked Out';
+            const statusText = activityData.actionDescription || (activityData.action === 'checkin' ? 'Checked In' : 'Checked Out');
             statusElement.textContent = statusText;
             
             // Format time
@@ -1572,6 +1650,337 @@
                 window.location.href = 'login.html';
             });
         }
+
+        // Show employee history modal
+        async function showEmployeeHistory(employeeId) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`http://localhost:3000/api/employee/history/${employeeId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch employee history');
+                }
+                
+                const data = await response.json();
+                displayEmployeeHistoryModal(data);
+                
+            } catch (error) {
+                console.error('Error fetching employee history:', error);
+                alert('Failed to load employee history. Please try again.');
+            }
+        }
+
+        // Display employee history in a modal
+        function displayEmployeeHistoryModal(data) {
+            const { employee, history } = data;
+            
+            // Create modal HTML
+            const modalHTML = `
+                <div id="employee-history-modal" style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 1000;
+                ">
+                    <div style="
+                        background: white;
+                        border-radius: 8px;
+                        padding: 20px;
+                        max-width: 800px;
+                        max-height: 80vh;
+                        overflow-y: auto;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0; color: #333;">Employee History - ${employee.name}</h3>
+                            <button onclick="closeEmployeeHistoryModal()" style="
+                                background: #dc3545;
+                                color: white;
+                                border: none;
+                                border-radius: 4px;
+                                padding: 8px 12px;
+                                cursor: pointer;
+                            ">Close</button>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
+                            <p style="margin: 5px 0;"><strong>Employee ID:</strong> ${employee.employee_id}</p>
+                            <p style="margin: 5px 0;"><strong>Department:</strong> ${employee.department}</p>
+                            <p style="margin: 5px 0;"><strong>Position:</strong> ${employee.position || 'N/A'}</p>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px; padding: 15px; background: #e9ecef; border-radius: 4px;">
+                            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                                <label style="font-weight: bold; color: #333;">Filter by Date:</label>
+                                <input type="date" id="history-date-filter" style="
+                                    padding: 8px;
+                                    border: 1px solid #ccc;
+                                    border-radius: 4px;
+                                    font-size: 14px;
+                                " onchange="filterEmployeeHistory('${employee.employee_id}')">
+                                <button onclick="showCurrentDayHistory('${employee.employee_id}')" style="
+                                    background: #007bff;
+                                    color: white;
+                                    border: none;
+                                    border-radius: 4px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                    font-size: 14px;
+                                ">Today</button>
+                                <button onclick="showAllHistory('${employee.employee_id}')" style="
+                                    background: #28a745;
+                                    color: white;
+                                    border: none;
+                                    border-radius: 4px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                    font-size: 14px;
+                                ">All History</button>
+                            </div>
+                        </div>
+                        
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                                <thead>
+                                    <tr style="background-color: #f8f9fa;">
+                                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Date</th>
+                                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Check In</th>
+                                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Check Out</th>
+                                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Status</th>
+                                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Hours</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-table-body">
+                                    ${history.map(record => `
+                                        <tr>
+                                            <td style="border: 1px solid #dee2e6; padding: 8px;">${new Date(record.date).toLocaleDateString()}</td>
+                                            <td style="border: 1px solid #dee2e6; padding: 8px;">${record.check_in_time || '-'}</td>
+                                            <td style="border: 1px solid #dee2e6; padding: 8px;">${record.check_out_time || '-'}</td>
+                                            <td style="border: 1px solid #dee2e6; padding: 8px;">
+                                                <span style="
+                                                    padding: 2px 8px;
+                                                    border-radius: 12px;
+                                                    font-size: 12px;
+                                                    background-color: ${getStatusColor(record.statusClass)};
+                                                    color: white;
+                                                ">${record.status}</span>
+                                            </td>
+                                            <td style="border: 1px solid #dee2e6; padding: 8px;">${record.total_hours_worked}h</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        ${history.length === 0 ? '<p id="no-history-message" style="text-align: center; color: #666; margin: 20px 0;">No attendance history found for today.</p>' : ''}
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        // Close employee history modal
+        function closeEmployeeHistoryModal() {
+            const modal = document.getElementById('employee-history-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Filter employee history by selected date
+        async function filterEmployeeHistory(employeeId) {
+            const dateInput = document.getElementById('history-date-filter');
+            const selectedDate = dateInput.value;
+            
+            if (!selectedDate) {
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/employee/history/${employeeId}?date=${selectedDate}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch filtered history');
+                }
+                
+                const data = await response.json();
+                updateHistoryTable(data.history);
+            } catch (error) {
+                console.error('Error filtering employee history:', error);
+                alert('Error filtering employee history: ' + error.message);
+            }
+        }
+
+        // Show current day history
+        async function showCurrentDayHistory(employeeId) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/employee/history/${employeeId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch current day history');
+                }
+                
+                const data = await response.json();
+                updateHistoryTable(data.history);
+                
+                // Clear date filter
+                const dateInput = document.getElementById('history-date-filter');
+                if (dateInput) {
+                    dateInput.value = '';
+                }
+            } catch (error) {
+                console.error('Error fetching current day history:', error);
+                alert('Error fetching current day history: ' + error.message);
+            }
+        }
+
+        // Show all history
+        async function showAllHistory(employeeId) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/employee/history/${employeeId}?limit=100`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch all history');
+                }
+                
+                const data = await response.json();
+                updateHistoryTable(data.history);
+                
+                // Clear date filter
+                const dateInput = document.getElementById('history-date-filter');
+                if (dateInput) {
+                    dateInput.value = '';
+                }
+            } catch (error) {
+                console.error('Error fetching all history:', error);
+                alert('Error fetching all history: ' + error.message);
+            }
+        }
+
+        // Update history table with new data
+        function updateHistoryTable(history) {
+            const tableBody = document.getElementById('history-table-body');
+            const noHistoryMessage = document.getElementById('no-history-message');
+            
+            if (history.length === 0) {
+                tableBody.innerHTML = '';
+                if (noHistoryMessage) {
+                    noHistoryMessage.style.display = 'block';
+                    noHistoryMessage.textContent = 'No attendance history found for the selected criteria.';
+                }
+            } else {
+                if (noHistoryMessage) {
+                    noHistoryMessage.style.display = 'none';
+                }
+                
+                tableBody.innerHTML = history.map(record => `
+                    <tr>
+                        <td style="border: 1px solid #dee2e6; padding: 8px;">${new Date(record.date).toLocaleDateString()}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px;">${record.check_in_time || '-'}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px;">${record.check_out_time || '-'}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px;">
+                            <span style="
+                                padding: 2px 8px;
+                                border-radius: 12px;
+                                font-size: 12px;
+                                background-color: ${getStatusColor(record.statusClass)};
+                                color: white;
+                            ">${record.status}</span>
+                        </td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px;">${record.total_hours_worked}h</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // Get status color for history display
+        function getStatusColor(statusClass) {
+            const colors = {
+                'present': '#28a745',
+                'absent': '#dc3545',
+                'checked-out': '#ffc107'
+            };
+            return colors[statusClass] || '#6c757d';
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('employee-history-modal');
+            if (modal && event.target === modal) {
+                closeEmployeeHistoryModal();
+            }
+        });
+
+        // Theme Management Functions
+        function toggleThemeDropdown() {
+            const dropdown = document.getElementById('themeDropdown');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function setTheme(themeName) {
+            // Remove all theme classes
+            document.body.classList.remove('theme-standard', 'theme-aesthetic', 'theme-light-moon', 'theme-dark-moon', 'theme-ocean-breeze');
+            
+            // Add the selected theme class
+            document.body.classList.add(`theme-${themeName}`);
+            
+            // Save theme preference
+            localStorage.setItem('selectedTheme', themeName);
+            
+            // Close dropdown
+            document.getElementById('themeDropdown').style.display = 'none';
+        }
+
+        // Load saved theme on page load
+        function loadSavedTheme() {
+            const savedTheme = localStorage.getItem('selectedTheme') || 'standard';
+            setTheme(savedTheme);
+        }
+
+        // Close theme dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const themeSwitcher = document.querySelector('.theme-switcher');
+            const dropdown = document.getElementById('themeDropdown');
+            
+            if (!themeSwitcher.contains(event.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Initialize theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSavedTheme();
+        });
     </script>
 </body>
 </html>
