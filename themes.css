@@ -36,8 +36,8 @@
     --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
     
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, var(--primary-color), #0056b3);
-    --gradient-secondary: linear-gradient(135deg, var(--secondary-color), #495057);
+    --gradient-primary: var(--primary-color);
+    --gradient-secondary: var(--secondary-color);
 }
 
 /* Aesthetic Theme */
@@ -51,7 +51,7 @@
     --light-color: #f8f0ff;
     --dark-color: #2d3748;
     
-    --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --bg-primary: #667eea;
     --bg-secondary: #f7fafc;
     --bg-tertiary: #edf2f7;
     --bg-card: rgba(255, 255, 255, 0.95);
@@ -70,8 +70,8 @@
     --shadow: 0 0.5rem 1rem rgba(102, 126, 234, 0.2);
     --shadow-lg: 0 1rem 3rem rgba(102, 126, 234, 0.3);
     
-    --gradient-primary: linear-gradient(135deg, #ff6b6b, #ee5a52);
-    --gradient-secondary: linear-gradient(135deg, #4ecdc4, #44a08d);
+    --gradient-primary: #ff6b6b;
+    --gradient-secondary: #4ecdc4;
 }
 
 /* Light Moon Theme */
@@ -85,7 +85,7 @@
     --light-color: #f1f5f9;
     --dark-color: #475569;
     
-    --bg-primary: linear-gradient(135deg, #fef7ff 0%, #f3e8ff 100%);
+    --bg-primary: #fef7ff;
     --bg-secondary: #faf8ff;
     --bg-tertiary: #f3e8ff;
     --bg-card: rgba(255, 255, 255, 0.9);
@@ -104,8 +104,8 @@
     --shadow: 0 0.5rem 1rem rgba(167, 139, 250, 0.15);
     --shadow-lg: 0 1rem 3rem rgba(167, 139, 250, 0.2);
     
-    --gradient-primary: linear-gradient(135deg, #a78bfa, #8b5cf6);
-    --gradient-secondary: linear-gradient(135deg, #94a3b8, #64748b);
+    --gradient-primary: #a78bfa;
+    --gradient-secondary: #94a3b8;
 }
 
 /* Dark Moon Theme */
@@ -119,7 +119,7 @@
     --light-color: #374151;
     --dark-color: #111827;
     
-    --bg-primary: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    --bg-primary: #1f2937;
     --bg-secondary: #1f2937;
     --bg-tertiary: #374151;
     --bg-card: rgba(31, 41, 55, 0.95);
@@ -138,8 +138,8 @@
     --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.5);
     
-    --gradient-primary: linear-gradient(135deg, #8b5cf6, #7c3aed);
-    --gradient-secondary: linear-gradient(135deg, #6b7280, #4b5563);
+    --gradient-primary: #8b5cf6;
+    --gradient-secondary: #6b7280;
 }
 
 /* Ocean Breeze Theme */
@@ -153,7 +153,7 @@
     --light-color: #f0f9ff;
     --dark-color: #0c4a6e;
     
-    --bg-primary: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
+    --bg-primary: #e0f2fe;
     --bg-secondary: #f0f9ff;
     --bg-tertiary: #e0f2fe;
     --bg-card: rgba(255, 255, 255, 0.9);
@@ -172,8 +172,705 @@
     --shadow: 0 0.5rem 1rem rgba(14, 165, 233, 0.15);
     --shadow-lg: 0 1rem 3rem rgba(14, 165, 233, 0.2);
     
-    --gradient-primary: linear-gradient(135deg, #0ea5e9, #0284c7);
-    --gradient-secondary: linear-gradient(135deg, #06b6d4, #0891b2);
+    --gradient-primary: #0ea5e9;
+    --gradient-secondary: #06b6d4;
+}
+
+/* ===== THEME-AWARE WIDGET STYLES ===== */
+
+/* Form Controls */
+.theme-standard .form-group input,
+.theme-standard .form-group select,
+.theme-standard .form-group textarea,
+.theme-standard #dailyReportDate,
+.theme-standard .export-controls select {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.theme-standard .form-group input:focus,
+.theme-standard .form-group select:focus,
+.theme-standard .form-group textarea:focus,
+.theme-standard #dailyReportDate:focus,
+.theme-standard .export-controls select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.theme-standard .form-group label {
+    color: var(--text-secondary);
+}
+
+/* Modals */
+.theme-standard .modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+
+.theme-standard .modal-header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.theme-standard .modal-header h2 {
+    color: var(--text-primary);
+}
+
+.theme-standard .close {
+    color: var(--text-muted);
+}
+
+.theme-standard .close:hover {
+    color: var(--text-primary);
+}
+
+.theme-standard .modal-footer {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+}
+
+/* Tables */
+.theme-standard .table {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.theme-standard .table th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.theme-standard .table td {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.theme-standard .table tbody tr:hover {
+    background: var(--bg-secondary);
+}
+
+/* Status Badges */
+.theme-standard .status-badge.present,
+.theme-standard .work-record-status.present {
+    background: var(--success-color);
+    color: white;
+}
+
+.theme-standard .status-badge.absent,
+.theme-standard .work-record-status.absent {
+    background: var(--danger-color);
+    color: white;
+}
+
+.theme-standard .status-badge.late,
+.theme-standard .work-record-status.sick-leave {
+    background: var(--warning-color);
+    color: white;
+}
+
+.theme-standard .status-badge.sick-leave,
+.theme-standard .work-record-status.personal-leave {
+    background: var(--info-color);
+    color: white;
+}
+
+.theme-standard .work-record-status.not-marked {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+
+/* Messages */
+.theme-standard .message-success {
+    background: rgba(40, 167, 69, 0.1);
+    color: var(--success-color);
+    border-color: rgba(40, 167, 69, 0.3);
+}
+
+.theme-standard .message-error {
+    background: rgba(220, 53, 69, 0.1);
+    color: var(--danger-color);
+    border-color: rgba(220, 53, 69, 0.3);
+}
+
+.theme-standard .message-info {
+    background: rgba(23, 162, 184, 0.1);
+    color: var(--info-color);
+    border-color: rgba(23, 162, 184, 0.3);
+}
+
+/* Loading Animation */
+.theme-standard .loading {
+    border-color: var(--bg-tertiary);
+    border-top-color: var(--primary-color);
+}
+
+/* Empty State */
+.theme-standard .empty-state {
+    color: var(--text-muted);
+}
+
+.theme-standard .empty-state i {
+    color: var(--border-color);
+}
+
+.theme-standard .empty-state h3 {
+    color: var(--text-secondary);
+}
+
+/* ===== AESTHETIC THEME WIDGETS ===== */
+
+.theme-aesthetic .form-group input,
+.theme-aesthetic .form-group select,
+.theme-aesthetic .form-group textarea,
+.theme-aesthetic #dailyReportDate,
+.theme-aesthetic .export-controls select {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+}
+
+.theme-aesthetic .form-group input:focus,
+.theme-aesthetic .form-group select:focus,
+.theme-aesthetic .form-group textarea:focus {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.theme-aesthetic .form-group input:focus,
+.theme-aesthetic .form-group select:focus,
+.theme-aesthetic .form-group textarea:focus,
+.theme-aesthetic #dailyReportDate:focus,
+.theme-aesthetic .export-controls select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+.theme-aesthetic .form-group label {
+    color: var(--text-secondary);
+}
+
+.theme-aesthetic .modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+
+.theme-aesthetic .modal-header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.theme-aesthetic .modal-header h2 {
+    color: var(--text-primary);
+}
+
+.theme-aesthetic .close {
+    color: var(--text-muted);
+}
+
+.theme-aesthetic .close:hover {
+    color: var(--text-primary);
+}
+
+.theme-aesthetic .modal-footer {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+}
+
+.theme-aesthetic .table {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.theme-aesthetic .table th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.theme-aesthetic .table td {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.theme-aesthetic .table tbody tr:hover {
+    background: var(--bg-secondary);
+}
+
+.theme-aesthetic .status-badge.present,
+.theme-aesthetic .work-record-status.present {
+    background: var(--success-color);
+    color: white;
+}
+
+.theme-aesthetic .status-badge.absent,
+.theme-aesthetic .work-record-status.absent {
+    background: var(--danger-color);
+    color: white;
+}
+
+.theme-aesthetic .status-badge.late,
+.theme-aesthetic .work-record-status.sick-leave {
+    background: var(--warning-color);
+    color: white;
+}
+
+.theme-aesthetic .status-badge.sick-leave,
+.theme-aesthetic .work-record-status.personal-leave {
+    background: var(--info-color);
+    color: white;
+}
+
+.theme-aesthetic .work-record-status.not-marked {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+
+.theme-aesthetic .message-success {
+    background: rgba(81, 207, 102, 0.1);
+    color: var(--success-color);
+    border-color: rgba(81, 207, 102, 0.3);
+}
+
+.theme-aesthetic .message-error {
+    background: rgba(255, 135, 135, 0.1);
+    color: var(--danger-color);
+    border-color: rgba(255, 135, 135, 0.3);
+}
+
+.theme-aesthetic .message-info {
+    background: rgba(116, 192, 252, 0.1);
+    color: var(--info-color);
+    border-color: rgba(116, 192, 252, 0.3);
+}
+
+.theme-aesthetic .loading {
+    border-color: var(--bg-tertiary);
+    border-top-color: var(--primary-color);
+}
+
+.theme-aesthetic .empty-state {
+    color: var(--text-muted);
+}
+
+.theme-aesthetic .empty-state i {
+    color: var(--border-color);
+}
+
+.theme-aesthetic .empty-state h3 {
+    color: var(--text-secondary);
+}
+
+/* ===== LIGHT MOON THEME WIDGETS ===== */
+
+.theme-light-moon .form-group input,
+.theme-light-moon .form-group select,
+.theme-light-moon .form-group textarea,
+.theme-light-moon #dailyReportDate,
+.theme-light-moon .export-controls select {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.theme-light-moon .form-group input:focus,
+.theme-light-moon .form-group select:focus,
+.theme-light-moon .form-group textarea:focus,
+.theme-light-moon #dailyReportDate:focus,
+.theme-light-moon .export-controls select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
+}
+
+.theme-light-moon .form-group label {
+    color: var(--text-secondary);
+}
+
+.theme-light-moon .modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+
+.theme-light-moon .modal-header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.theme-light-moon .modal-header h2 {
+    color: var(--text-primary);
+}
+
+.theme-light-moon .close {
+    color: var(--text-muted);
+}
+
+.theme-light-moon .close:hover {
+    color: var(--text-primary);
+}
+
+.theme-light-moon .modal-footer {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+}
+
+.theme-light-moon .table {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.theme-light-moon .table th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.theme-light-moon .table td {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.theme-light-moon .table tbody tr:hover {
+    background: var(--bg-secondary);
+}
+
+.theme-light-moon .status-badge.present,
+.theme-light-moon .work-record-status.present {
+    background: var(--success-color);
+    color: white;
+}
+
+.theme-light-moon .status-badge.absent,
+.theme-light-moon .work-record-status.absent {
+    background: var(--danger-color);
+    color: white;
+}
+
+.theme-light-moon .status-badge.late,
+.theme-light-moon .work-record-status.sick-leave {
+    background: var(--warning-color);
+    color: white;
+}
+
+.theme-light-moon .status-badge.sick-leave,
+.theme-light-moon .work-record-status.personal-leave {
+    background: var(--info-color);
+    color: white;
+}
+
+.theme-light-moon .work-record-status.not-marked {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+
+.theme-light-moon .message-success {
+    background: rgba(52, 211, 153, 0.1);
+    color: var(--success-color);
+    border-color: rgba(52, 211, 153, 0.3);
+}
+
+.theme-light-moon .message-error {
+    background: rgba(248, 113, 113, 0.1);
+    color: var(--danger-color);
+    border-color: rgba(248, 113, 113, 0.3);
+}
+
+.theme-light-moon .message-info {
+    background: rgba(96, 165, 250, 0.1);
+    color: var(--info-color);
+    border-color: rgba(96, 165, 250, 0.3);
+}
+
+.theme-light-moon .loading {
+    border-color: var(--bg-tertiary);
+    border-top-color: var(--primary-color);
+}
+
+.theme-light-moon .empty-state {
+    color: var(--text-muted);
+}
+
+.theme-light-moon .empty-state i {
+    color: var(--border-color);
+}
+
+.theme-light-moon .empty-state h3 {
+    color: var(--text-secondary);
+}
+
+/* ===== DARK MOON THEME WIDGETS ===== */
+
+.theme-dark-moon .form-group input,
+.theme-dark-moon .form-group select,
+.theme-dark-moon .form-group textarea,
+.theme-dark-moon #dailyReportDate,
+.theme-dark-moon .export-controls select {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.theme-dark-moon .form-group input:focus,
+.theme-dark-moon .form-group select:focus,
+.theme-dark-moon .form-group textarea:focus,
+.theme-dark-moon #dailyReportDate:focus,
+.theme-dark-moon .export-controls select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+.theme-dark-moon .form-group label {
+    color: var(--text-secondary);
+}
+
+.theme-dark-moon .modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+
+.theme-dark-moon .modal-header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.theme-dark-moon .modal-header h2 {
+    color: var(--text-primary);
+}
+
+.theme-dark-moon .close {
+    color: var(--text-muted);
+}
+
+.theme-dark-moon .close:hover {
+    color: var(--text-primary);
+}
+
+.theme-dark-moon .modal-footer {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+}
+
+.theme-dark-moon .table {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.theme-dark-moon .table th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.theme-dark-moon .table td {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.theme-dark-moon .table tbody tr:hover {
+    background: var(--bg-secondary);
+}
+
+.theme-dark-moon .status-badge.present,
+.theme-dark-moon .work-record-status.present {
+    background: var(--success-color);
+    color: white;
+}
+
+.theme-dark-moon .status-badge.absent,
+.theme-dark-moon .work-record-status.absent {
+    background: var(--danger-color);
+    color: white;
+}
+
+.theme-dark-moon .status-badge.late,
+.theme-dark-moon .work-record-status.sick-leave {
+    background: var(--warning-color);
+    color: white;
+}
+
+.theme-dark-moon .status-badge.sick-leave,
+.theme-dark-moon .work-record-status.personal-leave {
+    background: var(--info-color);
+    color: white;
+}
+
+.theme-dark-moon .work-record-status.not-marked {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+
+.theme-dark-moon .message-success {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-color);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.theme-dark-moon .message-error {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger-color);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.theme-dark-moon .message-info {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--info-color);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.theme-dark-moon .loading {
+    border-color: var(--bg-tertiary);
+    border-top-color: var(--primary-color);
+}
+
+.theme-dark-moon .empty-state {
+    color: var(--text-muted);
+}
+
+.theme-dark-moon .empty-state i {
+    color: var(--border-color);
+}
+
+.theme-dark-moon .empty-state h3 {
+    color: var(--text-secondary);
+}
+
+/* ===== OCEAN BREEZE THEME WIDGETS ===== */
+
+.theme-ocean-breeze .form-group input,
+.theme-ocean-breeze .form-group select,
+.theme-ocean-breeze .form-group textarea,
+.theme-ocean-breeze #dailyReportDate,
+.theme-ocean-breeze .export-controls select {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.theme-ocean-breeze .form-group input:focus,
+.theme-ocean-breeze .form-group select:focus,
+.theme-ocean-breeze .form-group textarea:focus,
+.theme-ocean-breeze #dailyReportDate:focus,
+.theme-ocean-breeze .export-controls select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.theme-ocean-breeze .form-group label {
+    color: var(--text-secondary);
+}
+
+.theme-ocean-breeze .modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+
+.theme-ocean-breeze .modal-header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.theme-ocean-breeze .modal-header h2 {
+    color: var(--text-primary);
+}
+
+.theme-ocean-breeze .close {
+    color: var(--text-muted);
+}
+
+.theme-ocean-breeze .close:hover {
+    color: var(--text-primary);
+}
+
+.theme-ocean-breeze .modal-footer {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+}
+
+.theme-ocean-breeze .table {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.theme-ocean-breeze .table th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.theme-ocean-breeze .table td {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.theme-ocean-breeze .table tbody tr:hover {
+    background: var(--bg-secondary);
+}
+
+.theme-ocean-breeze .status-badge.present,
+.theme-ocean-breeze .work-record-status.present {
+    background: var(--success-color);
+    color: white;
+}
+
+.theme-ocean-breeze .status-badge.absent,
+.theme-ocean-breeze .work-record-status.absent {
+    background: var(--danger-color);
+    color: white;
+}
+
+.theme-ocean-breeze .status-badge.late,
+.theme-ocean-breeze .work-record-status.sick-leave {
+    background: var(--warning-color);
+    color: white;
+}
+
+.theme-ocean-breeze .status-badge.sick-leave,
+.theme-ocean-breeze .work-record-status.personal-leave {
+    background: var(--info-color);
+    color: white;
+}
+
+.theme-ocean-breeze .work-record-status.not-marked {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+
+.theme-ocean-breeze .message-success {
+    background: rgba(5, 150, 105, 0.1);
+    color: var(--success-color);
+    border-color: rgba(5, 150, 105, 0.3);
+}
+
+.theme-ocean-breeze .message-error {
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--danger-color);
+    border-color: rgba(220, 38, 38, 0.3);
+}
+
+.theme-ocean-breeze .message-info {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--info-color);
+    border-color: rgba(37, 99, 235, 0.3);
+}
+
+.theme-ocean-breeze .loading {
+    border-color: var(--bg-tertiary);
+    border-top-color: var(--primary-color);
+}
+
+.theme-ocean-breeze .empty-state {
+    color: var(--text-muted);
+}
+
+.theme-ocean-breeze .empty-state i {
+    color: var(--border-color);
+}
+
+.theme-ocean-breeze .empty-state h3 {
+    color: var(--text-secondary);
 }
 
 /* Theme Transition */
@@ -290,7 +987,7 @@ body {
 }
 
 .btn-primary {
-    background: var(--gradient-primary) !important;
+    background: var(--primary-color) !important;
     border-color: var(--primary-color) !important;
 }
 
@@ -352,4 +1049,266 @@ body {
 
 .status-checked-out {
     background: var(--warning-color) !important;
+}
+
+/* ===== CARD AND GRID COMPONENTS - ALL THEMES ===== */
+
+/* Standard Theme Cards */
+.theme-standard .stat-card,
+.theme-standard .employee-card {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+.theme-standard .stat-card:hover,
+.theme-standard .employee-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.theme-standard .stat-card .stat-info h3,
+.theme-standard .employee-card .employee-card-info h3 {
+    color: var(--text-primary);
+}
+
+.theme-standard .stat-card .stat-info p,
+.theme-standard .employee-card .employee-card-info p {
+    color: var(--text-secondary);
+}
+
+/* Standard Theme Input Elements */
+.theme-standard input[type="text"],
+.theme-standard input[type="date"],
+.theme-standard input[type="email"],
+.theme-standard input[type="tel"],
+.theme-standard input[type="number"],
+.theme-standard input[type="password"],
+.theme-standard input[type="file"],
+.theme-standard #employee-code,
+.theme-standard #history-date-filter {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.theme-standard input[type="text"]:focus,
+.theme-standard input[type="date"]:focus,
+.theme-standard input[type="email"]:focus,
+.theme-standard input[type="tel"]:focus,
+.theme-standard input[type="number"]:focus,
+.theme-standard input[type="password"]:focus,
+.theme-standard #employee-code:focus,
+.theme-standard #history-date-filter:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* Aesthetic Theme Cards */
+.theme-aesthetic .stat-card,
+.theme-aesthetic .employee-card {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+.theme-aesthetic .stat-card:hover,
+.theme-aesthetic .employee-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.theme-aesthetic .stat-card .stat-info h3,
+.theme-aesthetic .employee-card .employee-card-info h3 {
+    color: var(--text-primary);
+}
+
+.theme-aesthetic .stat-card .stat-info p,
+.theme-aesthetic .employee-card .employee-card-info p {
+    color: var(--text-secondary);
+}
+
+/* Aesthetic Theme Input Elements */
+.theme-aesthetic input[type="text"],
+.theme-aesthetic input[type="date"],
+.theme-aesthetic input[type="email"],
+.theme-aesthetic input[type="tel"],
+.theme-aesthetic input[type="number"],
+.theme-aesthetic input[type="password"],
+.theme-aesthetic input[type="file"],
+.theme-aesthetic #employee-code,
+.theme-aesthetic #history-date-filter {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.theme-aesthetic input[type="text"]:focus,
+.theme-aesthetic input[type="date"]:focus,
+.theme-aesthetic input[type="email"]:focus,
+.theme-aesthetic input[type="tel"]:focus,
+.theme-aesthetic input[type="number"]:focus,
+.theme-aesthetic input[type="password"]:focus,
+.theme-aesthetic #employee-code:focus,
+.theme-aesthetic #history-date-filter:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+/* Light Moon Theme Cards */
+.theme-light-moon .stat-card,
+.theme-light-moon .employee-card {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+.theme-light-moon .stat-card:hover,
+.theme-light-moon .employee-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.theme-light-moon .stat-card .stat-info h3,
+.theme-light-moon .employee-card .employee-card-info h3 {
+    color: var(--text-primary);
+}
+
+.theme-light-moon .stat-card .stat-info p,
+.theme-light-moon .employee-card .employee-card-info p {
+    color: var(--text-secondary);
+}
+
+/* Light Moon Theme Input Elements */
+.theme-light-moon input[type="text"],
+.theme-light-moon input[type="date"],
+.theme-light-moon input[type="email"],
+.theme-light-moon input[type="tel"],
+.theme-light-moon input[type="number"],
+.theme-light-moon input[type="password"],
+.theme-light-moon input[type="file"],
+.theme-light-moon #employee-code,
+.theme-light-moon #history-date-filter {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.theme-light-moon input[type="text"]:focus,
+.theme-light-moon input[type="date"]:focus,
+.theme-light-moon input[type="email"]:focus,
+.theme-light-moon input[type="tel"]:focus,
+.theme-light-moon input[type="number"]:focus,
+.theme-light-moon input[type="password"]:focus,
+.theme-light-moon #employee-code:focus,
+.theme-light-moon #history-date-filter:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
+}
+
+/* Dark Moon Theme Cards */
+.theme-dark-moon .stat-card,
+.theme-dark-moon .employee-card {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+.theme-dark-moon .stat-card:hover,
+.theme-dark-moon .employee-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.theme-dark-moon .stat-card .stat-info h3,
+.theme-dark-moon .employee-card .employee-card-info h3 {
+    color: var(--text-primary);
+}
+
+.theme-dark-moon .stat-card .stat-info p,
+.theme-dark-moon .employee-card .employee-card-info p {
+    color: var(--text-secondary);
+}
+
+/* Dark Moon Theme Input Elements */
+.theme-dark-moon input[type="text"],
+.theme-dark-moon input[type="date"],
+.theme-dark-moon input[type="email"],
+.theme-dark-moon input[type="tel"],
+.theme-dark-moon input[type="number"],
+.theme-dark-moon input[type="password"],
+.theme-dark-moon input[type="file"],
+.theme-dark-moon #employee-code,
+.theme-dark-moon #history-date-filter {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.theme-dark-moon input[type="text"]:focus,
+.theme-dark-moon input[type="date"]:focus,
+.theme-dark-moon input[type="email"]:focus,
+.theme-dark-moon input[type="tel"]:focus,
+.theme-dark-moon input[type="number"]:focus,
+.theme-dark-moon input[type="password"]:focus,
+.theme-dark-moon #employee-code:focus,
+.theme-dark-moon #history-date-filter:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+/* Ocean Breeze Theme Cards */
+.theme-ocean-breeze .stat-card,
+.theme-ocean-breeze .employee-card {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+.theme-ocean-breeze .stat-card:hover,
+.theme-ocean-breeze .employee-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.theme-ocean-breeze .stat-card .stat-info h3,
+.theme-ocean-breeze .employee-card .employee-card-info h3 {
+    color: var(--text-primary);
+}
+
+.theme-ocean-breeze .stat-card .stat-info p,
+.theme-ocean-breeze .employee-card .employee-card-info p {
+    color: var(--text-secondary);
+}
+
+/* Ocean Breeze Theme Input Elements */
+.theme-ocean-breeze input[type="text"],
+.theme-ocean-breeze input[type="date"],
+.theme-ocean-breeze input[type="email"],
+.theme-ocean-breeze input[type="tel"],
+.theme-ocean-breeze input[type="number"],
+.theme-ocean-breeze input[type="password"],
+.theme-ocean-breeze input[type="file"],
+.theme-ocean-breeze #employee-code,
+.theme-ocean-breeze #history-date-filter {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.theme-ocean-breeze input[type="text"]:focus,
+.theme-ocean-breeze input[type="date"]:focus,
+.theme-ocean-breeze input[type="email"]:focus,
+.theme-ocean-breeze input[type="tel"]:focus,
+.theme-ocean-breeze input[type="number"]:focus,
+.theme-ocean-breeze input[type="password"]:focus,
+.theme-ocean-breeze #employee-code:focus,
+.theme-ocean-breeze #history-date-filter:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
 }

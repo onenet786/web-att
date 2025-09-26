@@ -151,7 +151,7 @@ body {
 }
 
 .stat-card {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    background: #f8fafc;
     border-radius: 15px;
     padding: 25px;
     display: flex;
@@ -174,15 +174,15 @@ body {
     justify-content: center;
     font-size: 1.5rem;
     color: white;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
 }
 
 .stat-icon.present {
-    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    background: #48bb78;
 }
 
 .stat-icon.absent {
-    background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+    background: #f56565;
 }
 
 .stat-info h3 {
@@ -305,7 +305,7 @@ body {
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: #667eea;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -403,7 +403,7 @@ body {
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -605,7 +605,7 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
 }
 
@@ -615,22 +615,22 @@ body {
 }
 
 .btn-success {
-    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    background: #48bb78;
     color: white;
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+    background: #f56565;
     color: white;
 }
 
 .btn-warning {
-    background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+    background: #ed8936;
     color: white;
 }
 
 .btn-info {
-    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    background: #4299e1;
     color: white;
 }
 
